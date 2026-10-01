@@ -15,15 +15,7 @@ const bank = new FaceBank();
 let renderer;
 let msg = { stage: "idle", t: 0, p: Object.fromEntries(PARAMS.map((d) => [d.key, d.value])) };
 let heard = 0;
-let colors = "";
-
-async function ensureBank(p) {
-  const key = p.ink + p.paper;
-  if (key === colors) return;
-  colors = key;
-  await bank.load(p.ink, p.paper);
-  renderer = new FaceRenderer(bank);
-}
+bank.load().then(() => { renderer = new FaceRenderer(bank); });
 
 if ("BroadcastChannel" in window) {
   new BroadcastChannel("voiceface").onmessage = (e) => { msg = e.data; heard = performance.now(); };
@@ -39,7 +31,7 @@ function loop(nowMs) {
   }
   const quiet = nowMs - heard > 2000;
   const m = quiet ? { ...msg, stage: "idle" } : msg;
-  ensureBank(m.p).then(() => renderer && drawScene(g, cv.width, cv.height, m, renderer, nowMs / 1000));
+  if (renderer) drawScene(g, cv.width, cv.height, m, renderer, nowMs / 1000);
   requestAnimationFrame(loop);
 }
 

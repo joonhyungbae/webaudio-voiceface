@@ -5,7 +5,7 @@
 #   & "$env:TEMP\install.ps1"
 #
 # 하는 일: 저장소 받기 → conda 확인(없으면 Miniforge 를 깐다) → conda 환경 만들기
-#          → 시험용 녹음 받기 → 켜는 법 알려 주기.
+#          → 얼굴 모델과 시험용 녹음 받기 → 켜는 법 알려 주기.
 $ErrorActionPreference = "Stop"
 $Name = "webaudio-voiceface"
 $Repo = "https://github.com/joonhyungbae/$Name"
@@ -52,10 +52,10 @@ if (Test-CondaEnv $Conda) {
   & $Conda env create -q -f environment.yml | Out-Null
 }
 
-# ── 4. 시험용 녹음 ──
-Say "마이크 없이 시험할 녹음을 받습니다 (약 1MB)"
-& $Conda run --no-capture-output -n $EnvName python fetch_sample.py
-if ($LASTEXITCODE -ne 0) { Say "받지 못했습니다. 마이크로 쓰는 데는 지장이 없습니다." }
+# ── 4. 얼굴 랜드마크 모델과 시험용 녹음 ──
+Say "얼굴 랜드마크 모델과 시험용 녹음을 받습니다 (약 5MB)"
+& $Conda run --no-capture-output -n $EnvName python fetch_assets.py
+if ($LASTEXITCODE -ne 0) { Say "받지 못했습니다. 인터넷을 확인하세요. 나중에 .\start.ps1 이 다시 받아 봅니다." }
 
 Write-Host ""
 Say "다 됐습니다. 이렇게 켭니다."

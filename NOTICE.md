@@ -4,8 +4,18 @@
 
 ## 코드에 포함한 것
 
-없습니다. 제3자 코드를 이 저장소에 넣지 않았습니다. 소리 분석과 화면은 브라우저에 들어 있는 기능
-(Web Audio, Canvas, BroadcastChannel)만 쓰고, 합성 음성은 운영체제의 음성을 씁니다.
+| 경로 | 출처 | 원저작자 | 라이선스 | 수정 여부 |
+|---|---|---|---|---|
+| `web/vendor/mediapipe/vision_bundle.mjs` | https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs | Google | **Apache-2.0** | 수정 없음 |
+| `web/vendor/mediapipe/wasm/vision_wasm_internal.js`, `.wasm` | https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm/ | Google | **Apache-2.0** | 수정 없음 |
+| `web/regions.js` 의 점 번호 | mediapipe 0.10.14 `face_mesh_connections.py` | Google | **Apache-2.0** | 번호만 옮겨 적음 |
+
+전시장에서 인터넷이 끊겨도 돌도록 CDN 대신 파일을 넣어 두었습니다.
+
+## 예제 얼굴 사진
+
+`web/faces/01.jpg`~`10.jpg` 는 `tools/make_faces.py` 로 APIFrame 의 FLUX.2 Pro(Black Forest Labs)에서 만든
+가상 인물입니다. 실존 인물을 찍거나 본뜬 것이 아닙니다. 이 저장소에서는 CC0 로 내놓습니다.
 
 ## 실행할 때 설치하는 것 (environment.yml)
 
@@ -18,9 +28,10 @@
 
 | 대상 | 출처 | 라이선스 | 비고 |
 |---|---|---|---|
+| MediaPipe Face Landmarker 모델 (`web/models/face_landmarker.task`) | https://storage.googleapis.com/mediapipe-models/ | Apache-2.0 | 저장소에 넣지 않는다. 설치 스크립트가 받는다. 설치 없이 보는 주소에는 배포할 때 받아 올린다 |
 | 시험용 녹음 (`web/sample/목소리.flac`) | https://commons.wikimedia.org/wiki/File:Ko_Colijn_voice_-_nl.flac | **CC0 1.0** (Vera de Kok) | 저장소에 넣지 않는다. 설치 스크립트가 받고 출처를 `web/sample/credits.md` 에 적는다 |
+| APIFrame (`tools/make_faces.py` 만) | https://apiframe.ai | 유료 API | 전시에는 쓰지 않는다. 쓰는 사람의 키로 부르고, 키는 저장소에 두지 않는다 |
 
 ## 글
 
 `web/script.js` 의 읽을 문장은 자리를 채우려고 넣은 윤동주의 「서시」입니다(퍼블릭 도메인).
-선으로 그린 기본 얼굴은 `web/face.js` 가 그때그때 그리는 것이라 제3자 저작물이 아닙니다.

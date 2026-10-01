@@ -116,7 +116,7 @@ def main() -> None:
     url = f"http://127.0.0.1:{port}/" + ("?" + "&".join(q) if q else "")
 
     if (args.sim or args.offline) and not (WEB / "sample" / "목소리.flac").exists():
-        print("시험용 녹음이 없습니다. 받기:  python3 fetch_sample.py")
+        print("시험용 녹음이 없습니다. 받기:  python3 fetch_assets.py")
 
     if args.offline:
         Handler.on_saved = lambda: threading.Thread(target=server.shutdown).start()

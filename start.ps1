@@ -13,5 +13,5 @@ Set-Location $PSScriptRoot
 $Conda = Find-Conda
 if (-not $Conda) { Write-Host "conda 가 없습니다. 먼저 설치해 주세요:  .\install.ps1" -ForegroundColor Red; exit 1 }
 if (-not (Test-CondaEnv $Conda)) { Write-Host "conda 환경($EnvName)이 없습니다. 먼저 설치해 주세요:  .\install.ps1" -ForegroundColor Red; exit 1 }
-if ((($args -contains "--sim") -or ($args -contains "--offline")) -and -not (Test-Path "web\sample\목소리.flac")) { & $Conda run --no-capture-output -n $EnvName python fetch_sample.py }
+if (-not (Test-Path "web\models\face_landmarker.task") -or -not (Test-Path "web\sample\목소리.flac")) { & $Conda run --no-capture-output -n $EnvName python fetch_assets.py }
 & $Conda run --no-capture-output -n $EnvName python serve.py @args

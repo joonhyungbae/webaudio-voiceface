@@ -1,11 +1,13 @@
 # webaudio-voiceface
 
 **관객이 화면의 문장을 소리 내어 읽으면 그 목소리로 얼굴 하나가 조합됩니다.** 읽는 빠르기, 크기,
-높낮이, 멈춤에 따라 눈·코·입·윤곽을 서로 다른 얼굴에서 가져오고, 읽을수록 어긋나 있던 얼굴이
-맞춰집니다. 다 읽으면 그 얼굴이 관객의 녹음으로 다시 말한 뒤 조각으로 흩어지고, 녹음은 지워집니다.
+높낮이, 멈춤에 따라 눈·코·입·윤곽을 서로 다른 사진 얼굴에서 가져와 한 장의 사진처럼 섞고, 읽을수록
+어긋나 있던 얼굴이 맞춰집니다. 다 읽으면 그 얼굴이 관객의 녹음으로 입을 움직이며 다시 말한 뒤
+조각으로 흩어지고, 녹음은 지워집니다.
 
-노트북 한 대, 마이크, 세로로 세운 모니터로 돕니다. 소리 분석은 브라우저의 Web Audio 가 맡고,
-얼굴은 미리 만들어 둔 그림들(없으면 선으로 그린 얼굴)을 띠로 잘라 조합합니다. 인터넷 없이 돌고,
+맥북 한 대, 마이크, 세로로 세운 모니터로 돕니다. 얼굴마다 MediaPipe 가 랜드마크 478점을 찾고,
+WebGL 이 그 그물망 위에서 얼굴들의 모양과 피부를 점마다 다른 비율로 섞습니다. 입 모양은 녹음의
+울림(포먼트)에서 뽑아 턱과 입술을 움직이고 입안과 치아를 채웁니다. 인터넷 없이 돌고,
 목소리는 컴퓨터 밖으로 나가지 않습니다. 완성된 작품이 아니라 출발점이고, 바꿔 가며 자기 작품으로
 만들라고 둔 예제입니다. 설치 없이 보려면 <https://joonhyungbae.github.io/webaudio-voiceface/> 를
 크롬으로 엽니다.
@@ -31,7 +33,7 @@ irm https://raw.githubusercontent.com/joonhyungbae/webaudio-voiceface/main/insta
 & "$env:TEMP\install.ps1"
 ```
 
-설치가 챙기는 것: conda 환경(`voiceface`), 마이크 없이 시험할 녹음(약 1MB).
+설치가 챙기는 것: conda 환경(`voiceface`), 얼굴 랜드마크 모델(약 4MB), 마이크 없이 시험할 녹음(약 1MB).
 conda 가 없으면 [Miniforge](https://conda-forge.org/download/)를 사용자 폴더(`~/miniforge3`)에 먼저 깝니다.
 관리자 권한이 필요 없고 터미널 설정 파일은 건드리지 않습니다. 이미 conda 가 있으면 그것을 씁니다.
 
@@ -88,7 +90,8 @@ conda 가 없으면 [Miniforge](https://conda-forge.org/download/)를 사용자 
    또렷해집니다. 「다시 듣기」를 끄면 다 읽자마자 흩어집니다.
 3. **`web/script.js`** 안내 글, 관객이 읽을 문장, 마지막 문장입니다. 지금은 자리를 채우려고 윤동주의
    「서시」를 넣어 두었습니다.
-4. **`web/faces/`** 미리 만든 얼굴 그림을 넣는 자리입니다. 넣는 법은 [web/faces/README.md](web/faces/README.md).
+4. **`web/faces/`** 얼굴 은행입니다. 지금은 예제로 만든 사진 10장이 들어 있습니다. 작가의 얼굴로 바꾸는 법은
+   [web/faces/README.md](web/faces/README.md). 정면, 다문 입, 고른 조명이면 크기와 위치는 달라도 됩니다.
 5. **`web/rule.js`** 목소리의 무엇이 얼굴의 무엇을 바꾸는지 정하는 곳입니다. 「낮은 목소리면 앞쪽 얼굴의
    윤곽」, 「빨리 읽으면 뒤쪽 얼굴의 눈」 같은 연결이 한 줄씩 적혀 있습니다. 이 줄들을 바꾸면 작품이 바뀝니다.
 
@@ -105,25 +108,41 @@ Cursor 에서 이 폴더를 열고 「rule.js 에서 멈춤이 많을수록 얼�
 | 전시 화면이 따라오지 않는다 | 두 창이 같은 브라우저(같은 크롬)에서 열렸는지 봅니다. 전시 화면은 조작 화면의 버튼으로 엽니다 |
 | 합성 음성이 소리를 안 낸다 | 운영체제에 한국어 음성이 깔려 있는지 봅니다. 맥은 시스템 설정 → 손쉬운 사용 → 읽기 및 말하기 |
 | 고쳤더니 화면이 하얗게 멈췄다 | 코드에 오타가 있습니다. 크롬에서 <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>J</kbd>(윈도우는 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd>)로 빨간 글자를 보고, 그대로 Cursor 에 붙여 넣습니다 |
+| 「얼굴을 읽지 못했습니다」가 나온다 | `web/faces/faces.json` 의 파일 이름이 맞는지 봅니다. 얼굴을 못 찾은 그림은 상태 줄에 이름이 나옵니다. 정면 사진으로 바꿉니다 |
+| 섞인 얼굴의 피부색이 얼룩진다 | 은행의 사진들 조명이 서로 많이 다릅니다. 비슷한 조명으로 맞추거나 `settings.js` 의 `COLOR_MATCH` 를 올립니다 |
 | 「conda 환경이 없습니다」가 나온다 | 설치 한 줄을 다시 실행합니다. 받아 둔 폴더 안에서 `bash install.sh` 로 쳐도 됩니다 |
 
 ## 6. 더 들어가기
 
 ```text
 serve.py          시작하는 자리. web/ 를 띄우고 --sim · --auto · --offline 을 처리한다
-fetch_sample.py   시험용 녹음을 받는다
+fetch_assets.py   얼굴 랜드마크 모델과 시험용 녹음을 받는다
+tools/make_faces.py  예제 얼굴 사진을 만든 스크립트 (APIFrame, 전시에는 필요 없다)
 web/
 ├── settings.js   만지는 숫자가 전부 여기. 여기부터 본다
 ├── script.js     화면에 나오는 글과 읽을 문장
 ├── voice.js      입력. 마이크 · 녹음 · 합성 음성을 숫자로 바꾼다
 ├── tap.js        오디오 스레드에서 소리를 받아 voice.js 에 넘긴다
 ├── rule.js       숫자를 얼굴 조합으로 잇는다. 여기가 작품이다
-├── face.js       출력. 얼굴 은행, 띠 조합, 입 움직임, 흩어짐, 자막
+├── face.js       출력. 얼굴 은행 읽기, 장면, 흩어짐, 자막
+├── morph.js      얼굴 엔진. 랜드마크 그물망으로 섞고 입·턱·눈꺼풀을 움직인다 (WebGL2)
+├── lipsync.js    녹음 전체에서 입 모양(턱 벌림·입술 모음·벌림)을 뽑는다
+├── regions.js    MediaPipe 얼굴 메시의 부위별 점 번호
 ├── session.js    체험 한 번의 순서와 장면 그리기
 ├── app.js        조작 화면
 ├── display.js    전시 화면. 조작 화면이 보낸 숫자만 받아 그린다
-└── faces/        얼굴 그림을 넣는 자리
+├── faces/        얼굴 은행 (사진과 faces.json)
+└── vendor/       MediaPipe 라이브러리 (인터넷 없이 돌도록 넣어 두었다)
 ```
+
+얼굴은 이렇게 섞입니다. 사진마다 두 눈을 같은 자리에 맞추고, 모든 얼굴의 평균 모양으로 삼각형 그물망을
+만듭니다. 그물망의 점마다 눈·코·입·윤곽 중 어디에 얼마나 속하는지를 매끄럽게 정해 두고, 부위마다 고른
+얼굴의 비율을 곱해 점마다 얼굴별 비율을 냅니다. 모양은 그 비율로 섞은 점 자리이고, 사진은 얼굴마다 그
+모양으로 휘어 비율만큼 더합니다. 피부색은 윤곽을 준 얼굴 쪽으로 맞춥니다. 그래서 이음새가 없습니다.
+
+입 모양은 녹음의 울림으로 짐작합니다. 첫째 울림이 높으면 턱이 벌어진 소리, 둘째 울림이 낮으면 입술을 모은
+소리, 높으면 옆으로 벌린 소리입니다. 녹음을 다 가진 뒤에 계산하므로 앞뒤를 보고 부드럽게 잇고, 입이 소리보다
+조금 먼저 움직입니다. 말의 뜻은 보지 않아 어느 언어든 같습니다.
 
 목소리는 오디오 스레드(AudioWorklet)에서 1024 샘플씩 받아 잽니다. 크기는 RMS, 높낮이는 YIN 방식,
 빠르기는 소리 크기의 봉우리(음절) 수, 멈춤은 0.25초가 넘는 침묵입니다. 말소리의 문턱은 방의 바닥
@@ -136,8 +155,9 @@ web/
 
 ## 쓰는 것과 라이선스
 
-외부 라이브러리를 쓰지 않습니다. 소리는 브라우저에 들어 있는 Web Audio, 합성 음성은 운영체제의
-음성 합성을 씁니다. 시험용 녹음은 위키미디어 공용의 CC0 녹음입니다. 전체 목록은 [NOTICE.md](NOTICE.md).
+얼굴 랜드마크는 [MediaPipe](https://ai.google.dev/edge/mediapipe)(Apache-2.0)입니다. 라이브러리는
+`web/vendor/` 에 넣어 두었고, 모델은 설치할 때 받습니다. 예제 얼굴 사진은 APIFrame 의 FLUX.2 Pro 로 만든
+가상 인물이고 실존 인물이 아닙니다. 시험용 녹음은 위키미디어 공용의 CC0 녹음입니다. 전체 목록은 [NOTICE.md](NOTICE.md).
 
 코드는 [OpenCircuit License v1.0](LICENSE)을 따릅니다. 오픈소스가 아니라 소스를 공개하되
 쓰임을 제한합니다.
@@ -160,9 +180,11 @@ curl -fsSL https://raw.githubusercontent.com/joonhyungbae/webaudio-voiceface/mai
 cd webaudio-voiceface && ./start.sh      # operator page at 127.0.0.1:7000
 ```
 
-Everything runs in the browser with no external libraries: an AudioWorklet feeds RMS level, YIN pitch,
-syllable peaks and pauses to `web/voice.js`; `web/rule.js` maps them to a face composition; `web/face.js`
-draws it. A second window (`display.html`) receives only numbers over BroadcastChannel for the portrait
+Everything runs in the browser: an AudioWorklet feeds RMS level, YIN pitch, syllable peaks and pauses to
+`web/voice.js`; `web/rule.js` maps them to a per-region face selection; `web/morph.js` blends photographs on
+a MediaPipe 478-landmark Delaunay mesh in WebGL2 with spatially varying weights and skin-tone matching, and
+animates jaw, lips and eyelids from an LPC-formant lip-sync track computed over the whole recording
+(`web/lipsync.js`). A second window (`display.html`) receives only numbers over BroadcastChannel for the portrait
 monitor. The installer creates a conda environment (`voiceface`, Python only, used for the local server).
 Every tunable value is in `web/settings.js`.
 

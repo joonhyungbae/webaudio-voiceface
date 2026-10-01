@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-시험용 녹음을 받는다. 마이크 없이(--sim, --offline) 돌려 보는 데 쓴다. 설치(install.sh)가 대신 해 준다.
+얼굴 랜드마크 모델과 시험용 녹음을 받는다. 설치(install.sh)가 대신 해 준다.
 
-  python3 fetch_sample.py       → web/sample/목소리.flac (약 1MB)
+  python fetch_assets.py     → web/models/face_landmarker.task (약 4MB)
+                               web/sample/목소리.flac (약 1MB, 마이크 없이 돌려 볼 때)
 
 이미 받았으면 건너뛴다. 받은 파일은 저장소에 올라가지 않는다(.gitignore).
+MediaPipe 라이브러리는 저장소에 들어 있어(web/vendor/mediapipe) 따로 받지 않는다.
 """
 
 from __future__ import annotations
@@ -16,6 +18,8 @@ import urllib.request
 from pathlib import Path
 
 WEB = Path(__file__).parent / "web"
+MODEL = ("https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+         "models/face_landmarker.task")
 SAMPLE = ("https://upload.wikimedia.org/wikipedia/commons/a/ac/Ko_Colijn_voice_-_nl.flac", "sample/목소리.flac")
 CREDIT = """목소리.flac
 출처: 위키미디어 공용, Vera de Kok 녹음 (네덜란드어로 말하는 남성 목소리, 22초)
@@ -42,15 +46,22 @@ def get(url: str, dest: Path) -> bool:
 
 
 def main() -> None:
-    url, rel = SAMPLE
-    dest = WEB / rel
-    if not (dest.exists() and dest.stat().st_size > 0):
+    failed = []
+    for url, rel in (MODEL, SAMPLE):
+        dest = WEB / rel
+        if dest.exists() and dest.stat().st_size > 0:
+            continue
         print(f"받는 중: web/{rel}")
         if not get(url, dest):
-            print("받지 못했습니다. 인터넷 연결을 확인하고 다시 실행하세요. 마이크로 쓰는 데는 지장이 없습니다.")
-            sys.exit(1)
-    (WEB / "sample" / "credits.md").write_text(CREDIT, encoding="utf-8")
-    print("끝. 마이크 없이 돌려 보려면:  ./start.sh --sim")
+            failed.append(rel)
+    if (WEB / SAMPLE[1]).exists():
+        (WEB / "sample" / "credits.md").write_text(CREDIT, encoding="utf-8")
+    if failed:
+        print("받지 못한 파일이 있습니다. 인터넷 연결을 확인하고 다시 실행하세요:")
+        for rel in failed:
+            print(f"  web/{rel}")
+        sys.exit(1)
+    print("끝. 이제 인터넷 없이도 열립니다.")
 
 
 if __name__ == "__main__":

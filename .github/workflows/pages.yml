@@ -20,7 +20,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - run: python3 fetch_sample.py
+      - run: python3 fetch_assets.py
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

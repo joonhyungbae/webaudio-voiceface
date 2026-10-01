@@ -11,13 +11,15 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 `web/settings.js`(숫자), `web/script.js`(문장), `web/faces/`(얼굴 그림)입니다.
 
 ```
-마이크·녹음·합성 음성 → tap.js(오디오 스레드) → voice.js → rule.js → face.js → <canvas>
-                                                  숫자        조합       그리기
+마이크·녹음·합성 음성 → tap.js(오디오 스레드) → voice.js → rule.js → face.js + morph.js → <canvas>
+                                                  숫자        부위별 얼굴   랜드마크 그물망 섞기(WebGL2)
+                       낭독이 끝나면 lipsync.js 가 녹음 전체에서 입 모양을 뽑아 다시 듣기 때 쓴다
                        session.js 가 순서를 돌리고 app.js(조작) → BroadcastChannel → display.js(전시)
 ```
 
-브라우저에서 도는 예제입니다. 빌드 단계가 없고 외부 라이브러리도 없습니다. 파이썬은 `serve.py`(정적
-서버)와 `fetch_sample.py`(내려받기)에만 쓰고 표준 라이브러리만 씁니다. 그래도 언제나 conda 환경
+브라우저에서 도는 예제입니다. 빌드 단계가 없습니다. 외부 라이브러리는 MediaPipe(얼굴 랜드마크) 하나이고
+`web/vendor/` 에 넣어 두었습니다. 파이썬은 `serve.py`(정적 서버)와 `fetch_assets.py`(내려받기)에만 쓰고
+표준 라이브러리만 씁니다. 그래도 언제나 conda 환경
 (`voiceface`)으로 돌립니다. conda 찾기·깔기는 `scripts/conda.sh`·`conda.ps1` 한 곳에 있습니다.
 
 한 파일이 한 가지만 합니다. 자세한 규약은 오픈서킷 허브의 `docs/example-repo.md` 「코드 구성」.
@@ -48,7 +50,11 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 | `web/tap.js` | 오디오 스레드에서 1024 샘플씩 넘긴다 | 여기서 무거운 계산을 하지 않는다 |
 | `web/voice.js` | 입력을 숫자로. 녹음은 메모리에만 | 숫자의 이름과 범위(0~1)를 바꾸면 rule.js 와 app.js 의 표도 고친다 |
 | `web/rule.js` | 숫자 → 얼굴 조합. **작가의 자리** | 한 줄에 한 연결로 짧게 둔다. 기술 코드를 넣지 않는다 |
-| `web/face.js` | 얼굴 은행, 조합, 입, 흩어짐, 자막 | 프레임마다 도는 곳이라 새 캔버스를 매번 만들지 않는다 |
+| `web/face.js` | 얼굴 은행 읽기, 장면, 흩어짐, 자막 | 프레임마다 도는 곳이라 새 캔버스를 매번 만들지 않는다 |
+| `web/morph.js` | 랜드마크 그물망 섞기와 입·턱·눈꺼풀 (WebGL2) | 그물망은 build() 에서 한 번만 만든다. 프레임마다는 blend → animate → render |
+| `web/lipsync.js` | 녹음 전체 → 입 모양 트랙 | 녹음을 저장하지 않는다. 숫자 배열만 남기고, 지울 때 함께 버린다 |
+| `web/regions.js` | MediaPipe 부위별 점 번호 | mediapipe 의 face_mesh_connections 에서 뽑은 값이다. 손으로 고치지 않는다 |
+| `tools/make_faces.py` | 예제 얼굴 사진 만들기 (APIFrame, FLUX.2 Pro) | 전시에는 쓰지 않는다. 키는 환경 변수나 `~/.opencircuit/apiframe-key` 에서 읽기만 한다. **키를 저장소의 어떤 파일에도 적지 않는다** |
 | `web/session.js` | 단계와 장면 그리기 | 조작 화면과 전시 화면이 같은 `drawScene` 을 쓴다 |
 | `web/app.js` · `display.js` | 조작 화면 · 전시 화면 | 전시 화면에는 숫자만 보낸다 |
 
@@ -59,26 +65,32 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 2. **녹음을 남기지 않는다.** 관객의 녹음은 메모리에만 두고 파일·서버·localStorage 에 쓰지 않는다.
    흩어짐이 끝나거나 처음으로를 누르면 `voice.erase()` 로 버린다. 마이크는 낭독이 끝나면 바로 놓는다.
    `--offline` 은 시험용 녹음만 쓰므로 예외다.
-3. **없어도 돌아가야 한다.** 마이크가 없으면 `--sim`, 얼굴 그림이 없으면 선 얼굴, 전시 화면이 없어도
+3. **없어도 돌아가야 한다.** 마이크가 없으면 `--sim`, 얼굴을 못 찾은 사진은 빼고, 전시 화면이 없어도
    조작 화면의 미리보기로 돈다.
 4. **숫자는 `settings.js` 에.**
 5. **주석과 문서는 한국어.** 긴 대시 대신 쉼표와 마침표.
 6. **언제나 conda 환경으로 돈다.** venv 나 시스템 파이썬으로 켜는 길을 만들지 않는다.
 7. **작품 구상을 적지 않는다.** 이 예제가 나온 작가의 이름과 아직 발표되지 않은 작품 내용은 README,
    주석, 커밋 메시지 어디에도 쓰지 않는다.
-8. **라이선스.** 소스 공개다. 오픈소스라고 부르지 않는다.
+8. **API 키를 올리지 않는다.** APIFrame 같은 서비스 키는 저장소 밖에 둔다. `.gitignore` 에 키 파일과 `.env` 가 있다.
+9. **라이선스.** 소스 공개다. 오픈소스라고 부르지 않는다.
 
 ## 자주 하는 작업
 
 - **얼굴이 고르는 방식을 바꾼다** → `rule.js` 의 연결 한 줄.
 - **새 목소리 숫자가 필요하다**(숨소리, 떨림) → `voice.js` 의 `Tally` 에서 모으고 `summary()` 에 0~1 로
   내보낸 뒤, `app.js` 의 `SUM` 표와 `rule.js` 에서 쓴다.
-- **얼굴 그림으로 바꾼다** → `web/faces/README.md`. 띠 위치는 `settings.js` 의 `BANDS`.
+- **얼굴 사진을 바꾼다** → `web/faces/README.md`. 섞이는 폭은 `settings.js` 의 `REGION_NEAR`·`REGION_FAR`.
+- **입 모양을 더 정확하게** → `lipsync.js` 의 `analyze()` 가 내는 `{fps, open, round, spread}` 꼴만 지키면
+  신경망 립싱크(음소 인식, 오디오→블렌드셰이프 모델 등)로 바꿔 끼울 수 있다.
 - **단계를 더한다** → `session.js` 에 단계 이름과 넘어가는 조건, `drawScene` 에 그리는 법.
 - **VR 같은 다른 화면을 붙인다** → 전시 화면처럼 `session.message()` 를 받게 한다. 브라우저 밖이면
   `serve.py` 에 상태를 내보내는 자리를 따로 만든다.
 
 ## 함정
+
+- **MediaPipe 얼굴 랜드마크의 「왼쪽」은 찍힌 사람 기준이다.** 화면에서 왼쪽에 보이는 눈이 RIGHT_EYE 다.
+- 입 안쪽 삼각형은 그물망에서 뺀다(regions.js 의 LIPS_INNER_LOOP 안). 빼지 않으면 입을 벌려도 입술이 늘어날 뿐 입안이 안 보인다.
 
 - **분석을 화면 그리기(requestAnimationFrame)에 묶지 않는다.** 조작 창이 전시 창에 가려지면 브라우저가
   그리기를 멈춰, 그동안의 목소리를 세지 못했다(22초 중 7초만 셌다). 그래서 AudioWorklet 에서 받는다.

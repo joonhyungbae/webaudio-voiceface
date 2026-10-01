@@ -7,3 +7,11 @@ out.webm
 # 큰 자료는 커밋하지 않는다. 설치 스크립트(fetch_sample.py)가 받아 온다.
 web/sample/*
 !web/sample/README.md
+
+# 얼굴 랜드마크 모델도 받아 쓴다
+web/models/
+
+# API 키는 절대 올리지 않는다
+.env
+*.apiframe-key
+apiframe-key

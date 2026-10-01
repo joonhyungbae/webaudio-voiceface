@@ -51,7 +51,6 @@ function buildParams() {
       show();
       save();
       voice.threshold = p.voiceThreshold;
-      if (d.type === "color") { await bank.load(p.ink, p.paper); renderer = new FaceRenderer(bank); }
     });
     show();
     row.append(Object.assign(document.createElement("span"), { textContent: d.label }), input, out);
@@ -170,7 +169,12 @@ function loop(nowMs) {
   buildParams();
   buildMeters();
   wire();
-  await bank.load(p.ink, p.paper);
+  try {
+    await bank.load((t) => ($("status").textContent = t));
+  } catch (e) {
+    $("status").textContent = `얼굴을 읽지 못했습니다: ${e.message || e}`;
+    return;
+  }
   renderer = new FaceRenderer(bank);
   session = new Session(voice, bank, p);
   session.onChange = (stage) => { if (stage === "idle") $("status").textContent = `얼굴: ${bank.source}${sim ? " · 시험용 녹음" : ""}`; };

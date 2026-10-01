@@ -13,11 +13,14 @@
 
 import { SCRIPT } from "./script.js";
 import { compose } from "./rule.js";
+import { analyze, at } from "./lipsync.js";
 import { text } from "./face.js";
 import { LINE_READ_RATIO, LINE_READ_PAUSE } from "./settings.js";
 
 // 줄에서 소리 나는 글자 수. 한글·영문·숫자만 센다
 const syllables = (line) => (line.match(/[가-힣a-zA-Z0-9]/g) || []).length;
+
+const scaleMouth = (m, g) => ({ open: Math.min(1, m.open * g), round: m.round, spread: m.spread });
 
 const EMPTY = { level: 0, pitch: 0.5, pitchVar: 0, rate: 0, pause: 0, rhythm: 0.5, seconds: 0 };
 
@@ -91,6 +94,8 @@ export class Session {
     this.stage = "finishing";
     const wasSynth = this.input === "synth";
     await this.voice.stopInput();
+    // 녹음 전체에서 입 모양을 뽑는다. 다시 듣기 때 얼굴이 이것으로 말한다
+    this.track = this.voice.recording && !wasSynth ? analyze(this.voice.recording) : null;
     if (wasSynth) this.voice.mode = "synth";
     if (this.p.replay && this.voice.replay(SCRIPT.lines, (i) => (this.line = i))) this.go("replay");
     else this.go("disperse");
@@ -99,6 +104,7 @@ export class Session {
   /* 녹음을 지우고 처음으로. */
   reset() {
     this.voice.erase();
+    this.track = null;
     this.sum = { ...EMPTY };
     this.go(this.stage === "idle" || this.stage === "intro" ? "idle" : "erased");
   }
@@ -133,12 +139,16 @@ export class Session {
     }
     if (this.stage === "disperse" && this.t > this.p.disperseSeconds) {
       this.voice.erase();
+      this.track = null;
       this.go("erased");
     }
     if (this.stage === "erased" && this.t > 2.5) this.go("idle");
 
     this.comp = compose(s, live, this.p, this.bank.count);
-    if (this.stage === "replay") this.comp.formed = 1;
+    if (this.stage === "replay") {
+      this.comp.formed = 1;
+      if (this.track) Object.assign(this.comp, scaleMouth(at(this.track, this.voice.now - this.voice.t0), this.p.mouthGain));
+    }
     return { s, live };
   }
 
@@ -167,12 +177,12 @@ export function drawScene(g, cw, ch, msg, renderer, now) {
     case "reading":
     case "finishing":
     case "replay":
-      renderer.compose(msg.comp);
-      renderer.drawFace(g, cw, ch, msg.comp, p, now);
+      renderer.compose(msg.comp, now);
+      renderer.drawFace(g, cw, ch);
       caption(SCRIPT.lines[msg.line]);
       break;
     case "disperse":
-      if (!renderer.tiles || msg.t < 0.05) { renderer.compose(msg.comp); renderer.startDisperse(); }
+      if (!renderer.tiles || msg.t < 0.05) { renderer.compose({ ...msg.comp, open: 0 }, now); renderer.startDisperse(); }
       renderer.drawDisperse(g, cw, ch, msg.t, p.disperseSeconds, SCRIPT.final, p);
       break;
     case "erased":

@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/joonhyungbae/webaudio-voiceface/main/install.sh | bash
 #
 # 하는 일: 저장소 받기 → conda 확인(없으면 Miniforge 를 깐다) → conda 환경 만들기
-#          → 시험용 녹음 받기 → 켜는 법 알려 주기.
+#          → 얼굴 모델과 시험용 녹음 받기 → 켜는 법 알려 주기.
 # 이미 받아 둔 폴더 안에서 실행해도 된다.
 set -euo pipefail
 
@@ -58,10 +58,10 @@ else
   "$CONDA" env create -q -f environment.yml >/dev/null
 fi
 
-# ── 4. 시험용 녹음. 없어도 마이크로는 돌아가므로 실패해도 멈추지 않는다 ──
-say "마이크 없이 시험할 녹음을 받습니다 (약 1MB)"
-"$CONDA" run --no-capture-output -n "$ENV_NAME" python fetch_sample.py \
-  || say "받지 못했습니다. 마이크로 쓰는 데는 지장이 없습니다. 나중에 ./start.sh --sim 이 다시 받아 봅니다."
+# ── 4. 얼굴 랜드마크 모델과 시험용 녹음 ──────────────────────────────────
+say "얼굴 랜드마크 모델과 시험용 녹음을 받습니다 (약 5MB)"
+"$CONDA" run --no-capture-output -n "$ENV_NAME" python fetch_assets.py \
+  || say "받지 못했습니다. 인터넷을 확인하세요. 나중에 ./start.sh 가 다시 받아 봅니다."
 
 chmod +x start.sh start.command 2>/dev/null || true
 

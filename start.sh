@@ -19,9 +19,7 @@ CONDA="$(find_conda)" || { echo "conda 가 없습니다. 먼저 설치해 주세
 env_exists "$CONDA" || { echo "conda 환경($ENV_NAME)이 없습니다. 먼저 설치해 주세요:  bash install.sh" >&2; exit 1; }
 py() { "$CONDA" run --no-capture-output -n "$ENV_NAME" python "$@"; }
 
-# 시험용 녹음이 필요한데 없으면 한 번 받아 본다
-case " $* " in
-  *" --sim "*|*" --offline "*) [ -f "web/sample/목소리.flac" ] || py fetch_sample.py || true ;;
-esac
+# 얼굴 모델(과 시험용 녹음)이 없으면 한 번 받아 본다
+[ -f web/models/face_landmarker.task ] && [ -f "web/sample/목소리.flac" ] || py fetch_assets.py || true
 
 py serve.py "$@"

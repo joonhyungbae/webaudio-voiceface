@@ -42,21 +42,26 @@ export const LINE_READ_PAUSE = 0.35;  // 이만큼 쉬면 다음 줄로 넘긴�
 export const NOISE_MARGIN = 0.15;     // 바닥 소음보다 이만큼 커야 말소리로 본다
 export const FLOOR_RISE = 0.04;       // 바닥 소음 짐작이 초당 오르는 폭. 내려갈 때는 바로 따라간다
 
-// ─── 얼굴 (face.js) ──────────────────────────────────────────────────────
-export const FACE_COUNT = 8;          // 그려서 쓰는 얼굴 수 (web/faces/ 에 그림이 있으면 그것을 쓴다)
-export const FACE_SEED = 27;          // 같은 수면 같은 얼굴들이 나온다
-export const FACE_W = 600;            // 얼굴 그림 한 장의 크기
-export const FACE_H = 800;
-// 얼굴을 띠로 나눠 띠마다 다른 얼굴에서 가져온다. [위, 아래, 왼쪽, 오른쪽] 비율
-// 가로를 얼굴 안쪽으로 좁혀 두어야 머리카락과 윤곽은 아래 얼굴 것이 그대로 남는다
-export const BANDS = {
-  eyes: [0.33, 0.5, 0.2, 0.8],
-  nose: [0.5, 0.62, 0.36, 0.64],
-  mouth: [0.62, 0.8, 0.3, 0.7],
-};
-export const BAND_FEATHER = 0.035;    // 띠 경계를 부드럽게 섞는 폭
+// ─── 얼굴 (face.js · morph.js) ───────────────────────────────────────────
+export const OUT_W = 768;             // 얼굴 그림 한 장의 크기(세로 3:4)
+export const OUT_H = 1024;
+export const EYE_LINE = 0.38;         // 두 눈을 맞출 높이 (위에서부터의 비율)
+export const EYE_GAP = 0.26;          // 두 눈 사이 거리 (너비에 대한 비율). 크면 얼굴이 크게 나온다
+export const REGION_NEAR = 0.014;     // 부위(눈·코·입) 점에서 이만큼 안쪽은 그 부위의 얼굴을 온전히 쓴다
+export const REGION_FAR = 0.09;       // 이만큼 멀어지면 윤곽 얼굴로 다 넘어간다. 넓으면 더 부드럽게 섞인다
+export const COLOR_MATCH = 0.9;       // 넓은 색(밝기·혈색)을 윤곽 얼굴에서 가져오는 정도. 세부(주름·눈매)는 부위 얼굴 그대로다
+export const COLOR_BLUR = 64;         // 「넓은 색」을 재는 해상도(너비 픽셀). 피부만 골라 흐리게 평균낸다
+export const CONTOUR_SNAP = 1;        // 윤곽(머리카락·옷·배경)을 섞는 정도. 1 이면 가까운 얼굴 하나를 고르고, 0 이면 고르게 섞는다.
+                                      // 머리카락과 옷은 그물망이 덜 맞아 반반 섞이면 겹쳐 보인다. 은행 사진이 서로 비슷하면 낮춰도 된다
+export const JAW_DROP = 0.55;         // 입을 다 벌렸을 때 턱이 내려가는 폭 (입 너비에 대한 비율)
+export const BLINK_EVERY = 4.5;       // 눈을 깜빡이는 대략의 간격(초)
 export const TILE_COLS = 14;          // 흩어질 때 조각 수
 export const TILE_ROWS = 20;
+
+// ─── 입 모양 (lipsync.js) ────────────────────────────────────────────────
+export const LIPSYNC_FPS = 100;       // 입 모양을 뽑는 횟수(초당)
+export const LIPSYNC_LEAD = 0.04;     // 입이 소리보다 먼저 움직이는 시간(초)
+export const LIPSYNC_SMOOTH = 0.03;   // 앞뒤로 부드럽게 잇는 폭(초)
 
 // ─── 전시 화면으로 보내기 ────────────────────────────────────────────────
 export const SEND_HZ = 30;            // 조작 화면이 전시 화면에 상태를 보내는 횟수(초당)
