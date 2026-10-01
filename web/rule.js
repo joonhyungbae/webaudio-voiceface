@@ -13,7 +13,6 @@
    eyes     눈 띠를 가져올 얼굴 번호
    nose     코 띠를 가져올 얼굴 번호
    mouth    입 띠를 가져올 얼굴 번호
-   open     입이 벌어진 정도 0~1
    tilt     고개 기울기 (라디안)
    formed   얼굴이 맞춰진 정도 0~1. 낮으면 띠들이 어긋나 흔들린다
 */
@@ -33,9 +32,6 @@ export function compose(s, live, p, n) {
 
     // 크게 읽을수록 뒤쪽 얼굴의 입. 멈춤이 많으면 조금 앞으로 당긴다
     mouth: pick(Math.max(0, s.level * 1.4 - s.pause * 0.3), n),
-
-    // 지금 소리가 클수록 입이 벌어진다
-    open: live.voiced ? Math.min(1, live.level * 1.3 * p.mouthGain) : 0,
 
     // 평균보다 높게 말하는 순간 고개가 살짝 든다
     tilt: (live.pitchN - s.pitch) * 0.12 * p.tiltGain,

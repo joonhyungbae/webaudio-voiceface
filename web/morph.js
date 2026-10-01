@@ -8,11 +8,11 @@
     가져올지(rule.js 의 결과)를 곱해 점마다 얼굴별 비율을 만든다.
  4. 목표 모양 = 얼굴별 비율로 섞은 점 자리. 그 위에 얼굴마다 자기 사진을 붙여 비율만큼 더해 그린다(WebGL).
     피부색은 윤곽을 준 얼굴 쪽으로 맞춘다. 그래서 이음새 없이 한 장의 사진처럼 섞인다.
- 5. 입을 벌리면 생기는 빈자리는 마지막 단계에서 입안과 치아로 채운다.
+ 5. 입은 이 엔진이 움직이지 않는다. 말하는 영상의 프레임을 그 얼굴 자리에 바꿔 끼우면(setFrame) 입이 움직인다.
 */
 
 import * as R from "./regions.js";
-import { OUT_W, OUT_H, EYE_LINE, EYE_GAP, REGION_NEAR, REGION_FAR, COLOR_MATCH, COLOR_BLUR, CONTOUR_SNAP, JAW_DROP } from "./settings.js";
+import { OUT_W, OUT_H, EYE_LINE, EYE_GAP, REGION_NEAR, REGION_FAR, COLOR_MATCH, COLOR_BLUR, CONTOUR_SNAP } from "./settings.js";
 
 const N = 478;
 
@@ -102,53 +102,19 @@ void main() {
 const VS_QUAD = `#version 300 es
 in vec2 a_pos; out vec2 v_uv;
 void main() { v_uv = a_pos * 0.5 + 0.5; gl_Position = vec4(a_pos, 0.0, 1.0); }`;
-// 마지막 단계: 더한 색을 비율로 나누고, 빈자리(입안)를 채우고, 덜 맞춰졌으면 가로 띠를 어긋낸다
+// 마지막 단계: 더한 색을 비율로 나누고, 덜 맞춰졌으면 가로 띠를 어긋낸다
 const FS_FINAL = `#version 300 es
 precision highp float;
 in vec2 v_uv;
-uniform sampler2D u_acc; uniform vec2 u_out;
-uniform vec2 u_mouth; uniform float u_mouthW; uniform float u_open;
-uniform vec2 u_up[11]; uniform vec2 u_lo[11];
-uniform float u_loose; uniform float u_time;
+uniform sampler2D u_acc; uniform float u_loose; uniform float u_time;
 out vec4 o;
 float hash(float n) { return fract(sin(n) * 43758.5453); }
-// 입술 안쪽 선(11점)에서 x 자리의 높이
-float lineY(vec2 L[11], float x) {
-  if (x <= L[0].x) return L[0].y;
-  for (int i = 0; i < 10; i++) {
-    if (x <= L[i + 1].x) return mix(L[i].y, L[i + 1].y, (x - L[i].x) / max(0.001, L[i + 1].x - L[i].x));
-  }
-  return L[10].y;
-}
 void main() {
   vec2 uv = v_uv;
   float strip = floor((1.0 - uv.y) * 48.0);
   uv.x += (hash(strip * 12.9898 + floor(u_time * 6.0) * 78.233) - 0.5) * 0.22 * u_loose * u_loose;
   vec4 a = texture(u_acc, uv);
-  vec3 face = a.rgb / max(a.a, 0.001);
-  vec2 px = vec2(uv.x, 1.0 - uv.y) * u_out;
-  float half_ = u_mouthW * 0.5;
-  float dx = (px.x - u_mouth.x) / half_;
-  float yUp = lineY(u_up, px.x), yLo = lineY(u_lo, px.x);
-  float gap = max(1.0, yLo - yUp);
-  float t = clamp((px.y - yUp) / gap, 0.0, 1.0);
-  // 입안: 위는 어둡고, 아래는 혀 기운으로 조금 붉다. 입꼬리 쪽은 더 어둡다
-  vec3 cavity = mix(vec3(0.07, 0.025, 0.03), vec3(0.36, 0.12, 0.13), smoothstep(0.45, 1.0, t) * smoothstep(0.25, 0.6, u_open));
-  cavity *= 1.0 - 0.6 * smoothstep(0.4, 1.0, abs(dx));
-  // 윗니: 윗입술 안쪽 선을 따라 내려온 띠
-  float th = u_mouthW * 0.11;
-  float ty = (px.y - yUp) / th;
-  float side = 1.0 - smoothstep(0.5, 0.88, abs(dx));
-  float upper = step(0.0, ty) * (1.0 - smoothstep(0.85, 1.0, ty)) * side;
-  float seam = smoothstep(0.42, 0.5, abs(fract((px.x - u_mouth.x) / (u_mouthW * 0.105) + 0.5) - 0.5)) * (1.0 - 0.5 * abs(dx));
-  vec3 enamel = vec3(0.93, 0.90, 0.84) * (0.72 + 0.28 * (1.0 - abs(dx)));
-  enamel *= 1.0 - 0.25 * smoothstep(0.55, 1.0, ty) - 0.35 * (1.0 - smoothstep(0.0, 0.12, ty)) - 0.1 * seam;
-  // 아랫니: 크게 벌렸을 때만 아랫입술 안쪽 위로 살짝
-  float lty = (yLo - px.y) / (th * 0.7);
-  float lower = step(0.0, lty) * (1.0 - smoothstep(0.7, 1.0, lty)) * side * smoothstep(0.45, 0.8, u_open);
-  vec3 cav = mix(cavity, enamel, upper * smoothstep(0.05, 0.25, u_open));
-  cav = mix(cav, enamel * 0.78, lower * (1.0 - upper));
-  o = vec4(mix(cav, face, smoothstep(0.0, 0.85, a.a)), 1.0);
+  o = vec4(a.rgb / max(a.a, 0.001), 1.0);
 }`;
 
 function program(gl, vs, fs) {
@@ -287,7 +253,7 @@ export class Morph {
     for (const f of this.faces) for (let i = 0; i < M.length; i++) M[i] += f.QX[i] / K;
     const pts = [];
     for (let v = 0; v < this.V; v++) pts.push([M[2 * v], M[2 * v + 1]]);
-    // 입 안쪽 삼각형은 따로 둔다. 입을 다물면 사진의 입술 사이를 그대로 보이고, 벌리면 걷어 입안이 드러난다.
+    // 입 안쪽 삼각형은 따로 둔다. 영상 프레임에서 입이 벌어지면 그 자리에 영상의 입안이 그대로 보인다.
     // 다문 입으로 그물망을 짜면 윗입술과 아랫입술이 맞붙어 있어 입안 삼각형이 갈리지 않는다.
     // 그래서 짜기 전에만 아랫입술과 턱을 내려 입을 벌려 두고 짠다. 짠 모양(어느 점끼리 잇는지)만 쓴다.
     const lower = new Set([...R.LIPS_LOWER_OUTER, ...R.LIPS_LOWER_INNER]);
@@ -443,43 +409,10 @@ export class Morph {
     for (let i = 0; i < this.REF.length; i++) this.REF[i] = la[i] + (lb[i] - la[i]) * t;
   }
 
-  /* 입·턱·눈꺼풀·고개를 목표 모양 위에서 움직인다. */
-  animate({ open = 0, round = 0, spread = 0, blink = 0, tilt = 0, nod = 0 }) {
+  /* 눈꺼풀과 고개를 목표 모양 위에서 움직인다. 입은 움직이지 않는다(말하는 영상의 프레임으로만 움직인다). */
+  animate({ blink = 0, tilt = 0, nod = 0 }) {
     const S = this.S;
-    const at = (i) => [S[2 * i], S[2 * i + 1]];
-    const cR = at(61), cL = at(291);
-    const mouthW = Math.hypot(cL[0] - cR[0], cL[1] - cR[1]);
-    const c = [(cR[0] + cL[0]) / 2, (cR[1] + cL[1]) / 2];
-    const chinY = S[2 * 152 + 1];
-    const jaw = open * mouthW * JAW_DROP;
-    const upper = new Set([...R.LIPS_UPPER_OUTER, ...R.LIPS_UPPER_INNER]);
-    const lowerLip = new Set([...R.LIPS_LOWER_OUTER, ...R.LIPS_LOWER_INNER]);
-    const corners = new Set([61, 291, 78, 308]);
-    for (let v = 0; v < N + 72; v++) {
-      const x = S[2 * v] - c[0], y = S[2 * v + 1] - c[1];
-      let dx = 0, dy = 0;
-      if (corners.has(v)) {
-        // 입꼬리는 제자리. 입안이 입꼬리 쪽으로 좁아진다
-      } else if (lowerLip.has(v)) {
-        // 아랫입술은 통째로 턱과 함께. 입꼬리에 가까울수록 덜
-        dy += jaw * smooth(0, mouthW * 0.35, mouthW * 0.5 - Math.abs(x));
-      } else if (upper.has(v)) {
-        dy -= open * mouthW * 0.04 * smooth(0, mouthW * 0.3, mouthW * 0.5 - Math.abs(x));  // 윗입술이 살짝 들린다
-      } else {
-        // 아래턱: 입 아래와 턱은 많이, 귀 쪽과 목은 덜
-        const below = smooth(mouthW * 0.02, mouthW * 0.25, y);
-        const side = 1 - smooth(mouthW * 0.7, mouthW * 2.3, Math.abs(x));
-        const neck = 1 - smooth(chinY - c[1] + mouthW * 0.25, chinY - c[1] + mouthW * 1.1, y);
-        dy += jaw * below * side * neck;
-      }
-      // 입꼬리: 벌리면(이·에) 바깥으로, 모으면(우·오) 안으로
-      for (const [cx, cy, sgn] of [[cR[0], cR[1], -1], [cL[0], cL[1], 1]]) {
-        const near = 1 - smooth(0, mouthW * 0.38, Math.hypot(S[2 * v] - cx, S[2 * v + 1] - cy));
-        dx += sgn * (spread * 0.1 - round * 0.16) * mouthW * near;
-      }
-      S[2 * v] += dx;
-      S[2 * v + 1] += dy;
-    }
+    const mouthW = Math.hypot(S[2 * 291] - S[2 * 61], S[2 * 291 + 1] - S[2 * 61 + 1]);
     // 눈꺼풀
     if (blink > 0) {
       for (const [up, lo] of [[R.RIGHT_EYE_UPPER, R.RIGHT_EYE_LOWER], [R.LEFT_EYE_UPPER, R.LEFT_EYE_LOWER]]) {
@@ -497,11 +430,6 @@ export class Morph {
         S[2 * v + 1] = o[1] + x * sn + y * cs + nod;
       }
     }
-    this.mouth = {
-      c: at(13).map((v, i) => (v + at(14)[i]) / 2), w: mouthW, open,
-      up: new Float32Array(R.LIPS_UPPER_INNER.flatMap((i) => at(i))),
-      lo: new Float32Array(R.LIPS_LOWER_INNER.flatMap((i) => at(i))),
-    };
   }
 
   /* 그린다. loose 가 크면 가로 띠가 어긋난다. */
@@ -546,10 +474,8 @@ export class Morph {
       gl.uniform1f(gl.getUniformLocation(this.pAcc, "u_mul"), 1);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
       gl.drawElements(gl.TRIANGLES, this.index.length, gl.UNSIGNED_SHORT, 0);
-      // 입 안쪽: 다물수록 사진 그대로, 벌릴수록 걷힌다
-      const keep = 1 - smooth(0.02, 0.18, this.mouth ? this.mouth.open : 0);
-      if (keep > 0.01 && this.holeIndex.length) {
-        gl.uniform1f(gl.getUniformLocation(this.pAcc, "u_mul"), keep);
+      // 입 안쪽 삼각형: 영상 프레임의 입안이 그대로 보인다
+      if (this.holeIndex.length) {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.holeIbo);
         gl.drawElements(gl.TRIANGLES, this.holeIndex.length, gl.UNSIGNED_SHORT, 0);
       }
@@ -563,13 +489,6 @@ export class Morph {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.accTex);
     gl.uniform1i(u("u_acc"), 0);
-    gl.uniform2f(u("u_out"), OUT_W, OUT_H);
-    const m = this.mouth || { c: [0, 0], w: 1, open: 0, up: new Float32Array(22), lo: new Float32Array(22) };
-    gl.uniform2f(u("u_mouth"), m.c[0], m.c[1]);
-    gl.uniform1f(u("u_mouthW"), m.w);
-    gl.uniform1f(u("u_open"), m.open);
-    gl.uniform2fv(u("u_up"), m.up);
-    gl.uniform2fv(u("u_lo"), m.lo);
     gl.uniform1f(u("u_loose"), loose);
     gl.uniform1f(u("u_time"), time);
     const aQ = gl.getAttribLocation(this.pFin, "a_pos");

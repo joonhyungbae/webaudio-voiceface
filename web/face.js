@@ -142,13 +142,10 @@ export class FaceRenderer {
   /* 한 얼굴을 엔진에서 그려 this.comp 에 옮긴다. */
   compose(c, now = 0) {
     const m = this.bank.morph;
-    // 영상 입을 쓰면 그물망으로 입을 벌리지 않는다 (영상이 이미 벌리고 있다)
-    const video = this.applyTalk(c.talk);
+    // 입은 말하는 영상의 프레임으로만 움직인다. 정지 프레임의 입을 늘려 벌리지 않는다
+    this.applyTalk(c.talk);
     m.blend(c);
-    m.animate({
-      open: video ? 0 : c.open || 0, round: video ? 0 : c.round || 0, spread: video ? 0 : c.spread || 0,
-      blink: blinkAt(now), tilt: (c.tilt || 0) + 0.012 * Math.sin(now * 0.6), nod: (c.open || 0) * 4 + 2 * Math.sin(now * 0.45),
-    });
+    m.animate({ blink: blinkAt(now), tilt: (c.tilt || 0) + 0.012 * Math.sin(now * 0.6), nod: 2 * Math.sin(now * 0.45) });
     const out = m.render(1 - (c.formed ?? 1), now);
     this.cg.drawImage(out, 0, 0);
   }

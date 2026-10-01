@@ -15,8 +15,6 @@ export const PARAMS = [
   { key: "lineSilence", label: "줄 넘김 침묵(초)", min: 0.6, max: 4, step: 0.1, value: 1.6 },
   // 이만큼 말하면 얼굴이 다 맞춰진다. 짧으면 금방 또렷해지고, 길면 끝까지 흔들린다
   { key: "formSeconds", label: "얼굴이 맞춰지는 시간(초)", min: 3, max: 60, step: 1, value: 15 },
-  // 입이 벌어지는 정도
-  { key: "mouthGain", label: "입 벌림 세기", min: 0, max: 2, step: 0.05, value: 1 },
   // 높낮이에 따라 고개가 기우는 정도
   { key: "tiltGain", label: "고개 기울기 세기", min: 0, max: 2, step: 0.05, value: 1 },
   // 얼굴이 조각으로 흩어지는 시간
@@ -53,7 +51,6 @@ export const COLOR_MATCH = 0.9;       // 넓은 색(밝기·혈색)을 윤곽 �
 export const COLOR_BLUR = 64;         // 「넓은 색」을 재는 해상도(너비 픽셀). 피부만 골라 흐리게 평균낸다
 export const CONTOUR_SNAP = 1;        // 윤곽(머리카락·옷·배경)을 섞는 정도. 1 이면 가까운 얼굴 하나를 고르고, 0 이면 고르게 섞는다.
                                       // 머리카락과 옷은 그물망이 덜 맞아 반반 섞이면 겹쳐 보인다. 은행 사진이 서로 비슷하면 낮춰도 된다
-export const JAW_DROP = 0.55;         // 입을 다 벌렸을 때 턱이 내려가는 폭 (입 너비에 대한 비율)
 export const BLINK_EVERY = 4.5;       // 눈을 깜빡이는 대략의 간격(초)
 export const TILE_COLS = 14;          // 흩어질 때 조각 수
 export const TILE_ROWS = 20;

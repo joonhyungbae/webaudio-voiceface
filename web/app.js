@@ -59,7 +59,7 @@ function buildParams() {
 }
 
 const SUM = [["level", "크기"], ["pitch", "높낮이"], ["pitchVar", "높낮이 변화"], ["rate", "빠르기"], ["pause", "멈춤"], ["rhythm", "고른 리듬"]];
-const COMP = ["contour", "eyes", "nose", "mouth", "open", "formed"];
+const COMP = ["contour", "eyes", "nose", "mouth", "formed"];
 function buildMeters() {
   $("summary").innerHTML = SUM.map(([k, t]) => `<div class="meter"><span>${t}</span><i><b id="m-${k}"></b></i><output id="v-${k}"></output></div>`).join("");
   $("comp").innerHTML = COMP.map((k) => `<span>${k} <b id="c-${k}">0</b></span>`).join("");

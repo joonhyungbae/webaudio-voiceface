@@ -13,14 +13,12 @@
 
 import { SCRIPT } from "./script.js";
 import { compose } from "./rule.js";
-import { analyze, at } from "./lipsync.js";
+import { analyze } from "./lipsync.js";
 import { text } from "./face.js";
 import { LINE_READ_RATIO, LINE_READ_PAUSE, TALK_FPS } from "./settings.js";
 
 // 줄에서 소리 나는 글자 수. 한글·영문·숫자만 센다
 const syllables = (line) => (line.match(/[가-힣a-zA-Z0-9]/g) || []).length;
-
-const scaleMouth = (m, g) => ({ open: Math.min(1, m.open * g), round: m.round, spread: m.spread });
 
 const EMPTY = { level: 0, pitch: 0.5, pitchVar: 0, rate: 0, pause: 0, rhythm: 0.5, seconds: 0 };
 
@@ -165,8 +163,6 @@ export class Session {
     if (this.stage === "erased" && this.t > 2.5) this.go("idle");
 
     this.comp = compose(s, live, this.p, this.bank.count);
-    // 입은 말하는 영상에서만 온다. 다시 듣기 전까지 얼굴은 입을 다물고 듣는다
-    if (this.stage !== "replay") Object.assign(this.comp, { open: 0, round: 0, spread: 0 });
     if (this.stage === "preparing") this.comp.formed = 1;
     if (this.stage === "replay") {
       this.comp.formed = 1;
@@ -177,7 +173,7 @@ export class Session {
         const i = seq[Math.min(seq.length - 1, Math.max(0, Math.floor(at_ * TALK_FPS)))];
         this.comp.mouth = k;
         this.comp.talk = { k, t: pack.frames[i].t, need: this.talkNeed };
-      } else if (this.track) Object.assign(this.comp, scaleMouth(at(this.track, at_), this.p.mouthGain));
+      }
     }
     return { s, live };
   }
@@ -213,7 +209,7 @@ export function drawScene(g, cw, ch, msg, renderer, now) {
       caption(SCRIPT.lines[msg.line]);
       break;
     case "disperse":
-      if (!renderer.tiles || msg.t < 0.05) { renderer.compose({ ...msg.comp, open: 0 }, now); renderer.startDisperse(); }
+      if (!renderer.tiles || msg.t < 0.05) { renderer.compose({ ...msg.comp, talk: null }, now); renderer.startDisperse(); }
       renderer.drawDisperse(g, cw, ch, msg.t, p.disperseSeconds, SCRIPT.final, p);
       break;
     case "erased":
