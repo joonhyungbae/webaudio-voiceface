@@ -182,8 +182,7 @@ function loop(nowMs) {
   $("status").textContent = `얼굴: ${bank.source}${sim ? " · 시험용 녹음으로 읽습니다" : ""}`;
   listMics();
   if (offline) recordOffline(offline);
-  // 관객을 기다리는 동안 말하는 영상들을 미리 훑어 둔다
-  renderer.scanAll();
+
   requestAnimationFrame(loop);
   try { navigator.wakeLock?.request("screen"); } catch {}
   window.voiceface = { p, voice, session };

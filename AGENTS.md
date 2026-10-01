@@ -8,7 +8,7 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 관객이 문장을 소리 내어 읽으면 그 목소리의 특징으로 얼굴을 조합하고, 그 얼굴이 녹음으로 말한 뒤
 흩어지고, 녹음은 지워지는 작품의 **출발점**입니다. 완성품이 아니라 작가가 고쳐 쓰라고 둔 예제이고,
 쓰는 사람은 대개 코딩 경험이 적은 예술가입니다. 작가가 주로 고치는 곳은 `web/rule.js`(연결),
-`web/settings.js`(숫자), `web/script.js`(문장), `web/faces/`(얼굴 그림)입니다.
+`web/settings.js`(숫자), `web/script.js`(문장), `web/faces/`(얼굴 은행인 말하는 영상)입니다.
 
 ```
 마이크·녹음·합성 음성 → tap.js(오디오 스레드) → voice.js → rule.js → face.js + morph.js → <canvas>
@@ -52,11 +52,11 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 | `web/rule.js` | 숫자 → 얼굴 조합. **작가의 자리** | 한 줄에 한 연결로 짧게 둔다. 기술 코드를 넣지 않는다 |
 | `web/face.js` | 얼굴 은행 읽기, 장면, 흩어짐, 자막 | 프레임마다 도는 곳이라 새 캔버스를 매번 만들지 않는다 |
 | `web/morph.js` | 랜드마크 그물망 섞기와 입·턱·눈꺼풀 (WebGL2) | 그물망은 build() 에서 한 번만 만든다. 프레임마다는 blend → animate → render |
-| `web/talk.js` | 말하는 영상 훑기 → 프레임 순서(비터비) → 쓰는 프레임만 잘라 오기 | 훑기는 기다리는 동안 미리 한다(app.js 의 scanAll). 잘라 온 그림은 입 얼굴 하나 것만 둔다 |
+| `web/talk.js` | 말하는 영상: 랜드마크 읽기(없으면 훑어 serve.py 로 저장) → 기본 얼굴(입 다문 프레임) → 프레임 순서(비터비) → 쓰는 프레임만 잘라 오기 | 랜드마크는 전체 프레임 픽셀 좌표(P), 잘라 온 그림의 좌표는 Pc. 잘라 온 그림은 입 얼굴 하나 것만 둔다 |
 | `web/lipsync.js` | 녹음 전체 → 입 모양 트랙 | 녹음을 저장하지 않는다. 숫자 배열만 남기고, 지울 때 함께 버린다 |
 | `web/regions.js` | MediaPipe 부위별 점 번호 | mediapipe 의 face_mesh_connections 에서 뽑은 값이다. 손으로 고치지 않는다 |
-| `tools/make_videos.py` | 사진마다 말하는 영상 만들기 (APIFrame Hailuo 02) + 키프레임 촘촘히 다시 인코딩 | 영상은 릴리스 faces-v1 에 올리고 fetch_assets.py 가 받는다 |
-| `tools/make_faces.py` | 예제 얼굴 사진 만들기 (APIFrame, FLUX.2 Pro) | 전시에는 쓰지 않는다. 키는 환경 변수나 `~/.opencircuit/apiframe-key` 에서 읽기만 한다. **키를 저장소의 어떤 파일에도 적지 않는다** |
+| `tools/make_videos.py` | 사진마다 말하는 영상 만들기 (APIFrame Hailuo 02) + 키프레임 촘촘히 다시 인코딩 | 영상·랜드마크·사진은 릴리스 faces-v1 에 올리고 fetch_assets.py 가 영상과 랜드마크를 받는다. 사진은 작품에서 쓰지 않는다 |
+| `tools/make_faces.py` | 영상의 첫 프레임이 될 인물 사진 만들기 (APIFrame, FLUX.2 Pro, faces-src/) | 전시에는 쓰지 않는다. 키는 환경 변수나 `~/.opencircuit/apiframe-key` 에서 읽기만 한다. **키를 저장소의 어떤 파일에도 적지 않는다** |
 | `web/session.js` | 단계와 장면 그리기 | 조작 화면과 전시 화면이 같은 `drawScene` 을 쓴다 |
 | `web/app.js` · `display.js` | 조작 화면 · 전시 화면 | 전시 화면에는 숫자만 보낸다 |
 
@@ -67,7 +67,7 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 2. **녹음을 남기지 않는다.** 관객의 녹음은 메모리에만 두고 파일·서버·localStorage 에 쓰지 않는다.
    흩어짐이 끝나거나 처음으로를 누르면 `voice.erase()` 로 버린다. 마이크는 낭독이 끝나면 바로 놓는다.
    `--offline` 은 시험용 녹음만 쓰므로 예외다.
-3. **없어도 돌아가야 한다.** 마이크가 없으면 `--sim`, 얼굴을 못 찾은 사진은 빼고, 전시 화면이 없어도
+3. **없어도 돌아가야 한다.** 마이크가 없으면 `--sim`, 읽지 못한 얼굴 영상은 빼고, 전시 화면이 없어도
    조작 화면의 미리보기로 돈다.
 4. **숫자는 `settings.js` 에.**
 5. **주석과 문서는 한국어.** 긴 대시 대신 쉼표와 마침표.
@@ -82,7 +82,7 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 - **얼굴이 고르는 방식을 바꾼다** → `rule.js` 의 연결 한 줄.
 - **새 목소리 숫자가 필요하다**(숨소리, 떨림) → `voice.js` 의 `Tally` 에서 모으고 `summary()` 에 0~1 로
   내보낸 뒤, `app.js` 의 `SUM` 표와 `rule.js` 에서 쓴다.
-- **얼굴 사진을 바꾼다** → `web/faces/README.md`. 섞이는 폭은 `settings.js` 의 `REGION_NEAR`·`REGION_FAR`.
+- **얼굴 영상을 바꾼다** → `web/faces/README.md`. 섞이는 폭은 `settings.js` 의 `REGION_NEAR`·`REGION_FAR`.
 - **입 모양을 더 정확하게** → `lipsync.js` 의 `analyze()` 가 내는 `{fps, open, round, spread}` 꼴만 지키면
   신경망 립싱크(음소 인식, 오디오→블렌드셰이프 모델 등)로 바꿔 끼울 수 있다.
 - **단계를 더한다** → `session.js` 에 단계 이름과 넘어가는 조건, `drawScene` 에 그리는 법.
@@ -99,7 +99,7 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
   그 주소로 가는 fetch 만 막는다. 이 막음을 지우면 「밖으로 아무것도 보내지 않는다」가 깨진다.
 - **8비트 틀에 더해 섞지 않는다.** 겹친 곳이 1 에서 잘리고 옅은 곳은 하얗게 튄다. 16비트 부동소수(RGBA16F) 틀을 쓴다.
 - **그물망은 입을 벌린 모양으로 짠다.** 다문 입으로 짜면 입안 삼각형이 갈리지 않아 입을 벌려도 입술만 늘어난다.
-- **넓은 색은 피부에서만 잰다.** 사진을 그냥 줄여 재면 눈 옆 머리카락이 섞여 눈동자가 주황색으로 들뜬다.
+- **넓은 색은 피부에서만 잰다.** 그림을 그냥 줄여 재면 눈 옆 머리카락이 섞여 눈동자가 주황색으로 들뜬다.
 - **MediaPipe 얼굴 랜드마크의 「왼쪽」은 찍힌 사람 기준이다.** 화면에서 왼쪽에 보이는 눈이 RIGHT_EYE 다.
 - 입 안쪽 삼각형은 그물망에서 뺀다(regions.js 의 LIPS_INNER_LOOP 안). 빼지 않으면 입을 벌려도 입술이 늘어날 뿐 입안이 안 보인다.
 

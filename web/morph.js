@@ -198,11 +198,10 @@ export class Morph {
   }
 
   /* 얼굴 하나를 들인다. img 는 그림, pts 는 MediaPipe 랜드마크(0~1 비율) 478개. */
-  addFace(img, landmarks) {
+  /* 얼굴 하나를 들인다. img 는 그림, P 는 그 그림 속 랜드마크 478점의 픽셀 좌표 (x, y 번갈아). */
+  addFace(img, P) {
     const gl = this.gl;
     const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-    const P = new Float32Array(2 * N);
-    for (let i = 0; i < N; i++) { P[2 * i] = landmarks[i].x * w; P[2 * i + 1] = landmarks[i].y * h; }
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);

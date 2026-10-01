@@ -94,9 +94,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             left -= len(chunk)
 
     def do_POST(self) -> None:
-        # --offline 녹화만 받는다. 이 컴퓨터에서 온 것만.
+        # 이 컴퓨터에서 온 것만 받는다: --offline 녹화, 그리고 처음 잰 얼굴 영상의 랜드마크
         url = urlparse(self.path)
-        if url.path != "/save" or self.client_address[0] not in ("127.0.0.1", "::1"):
+        if self.client_address[0] not in ("127.0.0.1", "::1"):
+            self.send_error(404)
+            return
+        if url.path == "/save-landmarks":
+            name = parse_qs(url.query).get("name", [""])[0]
+            if not re.fullmatch(r"[\w.-]+\.lm\.json", name):
+                self.send_error(400)
+                return
+            body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            (WEB / "faces" / name).write_bytes(body)
+            self.send_response(200)
+            self.end_headers()
+            print(f"얼굴 영상의 랜드마크를 저장했습니다: web/faces/{name}")
+            return
+        if url.path != "/save":
             self.send_error(404)
             return
         ext = parse_qs(url.query).get("ext", ["webm"])[0]

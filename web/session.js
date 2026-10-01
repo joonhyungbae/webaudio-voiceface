@@ -42,7 +42,6 @@ export class Session {
   }
 
   go(stage) {
-    if (stage === "reading") this.lastWarm = 0;
     this.stage = stage;
     this.t = 0;
     this.onChange?.(stage);
@@ -108,6 +107,7 @@ export class Session {
         const { pack, seq } = await this.renderer.prepareTalk(k, this.track, (t) => (this.note = t));
         if (this.stage !== "preparing") return;  // 그사이 처음으로 돌아갔다
         this.talkPlan = { k, pack, seq };
+        this.talkNeed = [...new Set(seq)];  // 전시 화면도 같은 프레임만 잘라 오게 보낸다
       } catch (e) {
         this.note = `영상 입을 쓰지 못해 사진으로 말합니다: ${e.message || e}`;
       }
@@ -165,16 +165,9 @@ export class Session {
     if (this.stage === "erased" && this.t > 2.5) this.go("idle");
 
     this.comp = compose(s, live, this.p, this.bank.count);
-    // 읽는 동안 입을 맡을 얼굴이 어느 정도 보이면 그 얼굴의 영상부터 미리 훑는다 (낭독이 끝난 뒤 기다림이 짧아진다)
-    if (this.stage === "reading" && renderer && this.t - (this.lastWarm || 0) > 3) {
-      this.lastWarm = this.t;
-      const k = Math.round(this.comp.mouth);
-      if (renderer.canTalk(k)) renderer.talk.scan(k, renderer.bank.videos[k]).catch(() => {});
-    }
-    if (this.stage === "preparing") {
-      this.comp.formed = 1;
-      this.comp.open = 0;
-    }
+    // 입은 말하는 영상에서만 온다. 다시 듣기 전까지 얼굴은 입을 다물고 듣는다
+    if (this.stage !== "replay") Object.assign(this.comp, { open: 0, round: 0, spread: 0 });
+    if (this.stage === "preparing") this.comp.formed = 1;
     if (this.stage === "replay") {
       this.comp.formed = 1;
       const at_ = this.voice.now - this.voice.t0;
@@ -183,7 +176,7 @@ export class Session {
         const { k, pack, seq } = this.talkPlan;
         const i = seq[Math.min(seq.length - 1, Math.max(0, Math.floor(at_ * TALK_FPS)))];
         this.comp.mouth = k;
-        this.comp.talk = { k, t: pack.frames[i].t };
+        this.comp.talk = { k, t: pack.frames[i].t, need: this.talkNeed };
       } else if (this.track) Object.assign(this.comp, scaleMouth(at(this.track, at_), this.p.mouthGain));
     }
     return { s, live };

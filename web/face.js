@@ -2,8 +2,8 @@
  출력. 얼굴 은행을 읽고, 엔진(morph.js)으로 한 얼굴을 그리고, 흩어뜨리고, 자막을 얹는다.
 
  얼굴 은행 (web/faces/)
-   faces.json 에 적힌 그림들을 읽는다. 정면이고 입을 다문 사진이면 크기와 위치는 달라도 된다.
-   처음 읽을 때 MediaPipe 가 그림마다 얼굴 랜드마크 478점을 찾는다(브라우저 안에서, 한 장에 0.1초 안팎).
+   faces.json 에 적힌 말하는 영상들을 읽는다. 카메라를 정면으로 보고 말하는 영상이면 된다.
+   영상마다 프레임별 랜드마크(NN.lm.json)를 쓰고, 입을 가장 다문 프레임이 그 얼굴의 기본 모습이 된다.
 
  그리는 장면
    idle      기다리는 동안. 은행의 얼굴들이 천천히 서로에게 스며든다
@@ -41,29 +41,32 @@ async function landmarker(runningMode = "IMAGE") {
 }
 
 export class FaceBank {
-  /* 그림을 읽고 랜드마크를 찾아 엔진에 들인다. say(글) 로 진행을 알린다. */
+  /* 얼굴 은행: faces.json 에 적힌 말하는 영상들. 영상마다 랜드마크를 읽고(없으면 만들고),
+     입을 가장 다문 프레임을 그 얼굴의 기본 모습으로 엔진에 들인다. say(글) 로 진행을 알린다. */
   async load(say = () => {}) {
-    say("얼굴 그림을 읽는 중");
+    say("얼굴 영상을 읽는 중");
     const list = await (await fetch("faces/faces.json", { cache: "no-store" })).json();
     this.morph = new Morph();
-    const lm = await landmarker();
-    this.skipped = [];
+    this.talk = new Talk(landmarker);
     this.videos = [];
+    this.skipped = [];
     for (const f of list) {
-      const img = new Image();
-      img.src = `faces/${f.src}`;
-      await img.decode();
-      const r = lm.detect(img);
-      if (!r.faceLandmarks?.length) { this.skipped.push(f.src); continue; }
-      this.morph.addFace(img, r.faceLandmarks[0]);
-      this.videos.push(f.video ? `faces/${f.video}` : null);
-      say(`얼굴을 찾는 중 ${this.morph.count}/${list.length}`);
+      const url = `faces/${f.video}`;
+      try {
+        const k = this.videos.length;
+        const pack = await this.talk.load(k, url, say);
+        const rest = await this.talk.restFrame(pack);
+        this.morph.addFace(rest, pack.frames[pack.rest].P);
+        this.videos.push(url);
+        say(`얼굴 영상을 읽는 중 ${this.videos.length}/${list.length}`);
+      } catch (e) {
+        this.skipped.push(f.video);
+        this.talk.packs.length = this.videos.length;
+      }
     }
-    lm.close();
-    if (this.morph.count < 2) throw new Error("얼굴을 찾은 그림이 두 장보다 적습니다. web/faces/ 를 보세요");
+    if (this.morph.count < 2) throw new Error("읽은 얼굴 영상이 두 편보다 적습니다. web/faces/ 를 보세요");
     this.morph.build();
-    const nv = this.videos.filter(Boolean).length;
-    this.source = `사진 얼굴 ${this.morph.count}장` + (nv ? ` · 말하는 영상 ${nv}편` : "") + (this.skipped.length ? ` (얼굴을 못 찾아 뺀 것: ${this.skipped.join(", ")})` : "");
+    this.source = `말하는 얼굴 ${this.morph.count}편` + (this.skipped.length ? ` (읽지 못해 뺀 것: ${this.skipped.join(", ")})` : "");
   }
 
   get count() { return this.morph ? this.morph.count : 0; }
@@ -84,25 +87,16 @@ export class FaceRenderer {
     this.comp = Object.assign(document.createElement("canvas"), { width: W, height: H });
     this.cg = this.comp.getContext("2d");
     this.tiles = null;
-    this.talk = new Talk(landmarker);
-    this.wanted = new Set();    // 전시 화면이 통째로 준비를 걸어 둔 얼굴
+    this.talk = bank.talk;
+    this.wanted = new Set();    // 전시 화면이 잘라 오기를 걸어 둔 얼굴
   }
 
-  /* 이 얼굴에 말하는 영상이 있나 */
-  canTalk(k) { return !!this.bank.videos?.[k]; }
-
-  /* 관객을 기다리는 동안 모든 영상을 미리 훑어 둔다 (랜드마크와 입 모양만, 그림은 남기지 않는다). */
-  async scanAll(say = () => {}) {
-    for (let k = 0; k < this.bank.count; k++) {
-      if (!this.canTalk(k)) continue;
-      try { await this.talk.scan(k, this.bank.videos[k]); } catch {}
-    }
-    say();
-  }
+  /* 이 얼굴에 말하는 영상이 있나 (얼굴 은행은 모두 영상이다) */
+  canTalk(k) { return !!this.talk.packs[k]; }
 
   /* 다시 듣기 직전: 순서를 정하고 그 순서에 쓰는 프레임만 잘라 온다. */
   async prepareTalk(k, track, say) {
-    const pack = await this.talk.scan(k, this.bank.videos[k], say);
+    const pack = this.talk.packs[k];
     const seq = this.talk.plan(pack, track);
     await this.talk.grab(pack, seq, say);
     this.ensureLow(pack);
@@ -111,28 +105,29 @@ export class FaceRenderer {
 
   ensureLow(pack) {
     const r = pack.frames[pack.rest];
-    if (!pack.low && r.bitmap) pack.low = lowImage(r.bitmap, r.P);
+    if (!pack.low && r.bitmap) pack.low = lowImage(r.bitmap, r.Pc);
   }
 
-  /* 영상 프레임을 끼우거나 걷는다. talk = { k, t } (t 는 영상 속 시각).
-     아직 준비가 안 됐으면(전시 화면) 통째로 준비를 걸어 두고 이번에는 사진으로 그린다. */
+  /* 영상 프레임을 끼우거나 걷는다. talk = { k, t, need } (t 는 영상 속 시각, need 는 쓰는 프레임 번호들).
+     아직 잘라 오지 않았으면(전시 화면) 잘라 오기를 걸어 두고 이번에는 기본 얼굴로 그린다. */
   applyTalk(talk) {
     const m = this.bank.morph;
     if (!talk) { if (m.talkK != null) m.restoreStill(m.talkK); return false; }
-    const pack = this.talk.packs.get(talk.k);
-    if (!pack || !pack.frames[pack.rest].bitmap) {
-      if (!this.wanted.has(talk.k) && this.canTalk(talk.k)) {
+    const pack = this.talk.packs[talk.k];
+    if (!pack) return false;
+    if (!pack.frames[pack.rest].bitmap || (talk.need && !this.wanted.has(talk.k))) {
+      if (!this.wanted.has(talk.k)) {
         this.wanted.add(talk.k);
-        this.talk.scan(talk.k, this.bank.videos[talk.k]).then((p) => this.talk.grab(p)).then(() => this.ensureLow(this.talk.packs.get(talk.k))).catch(() => {});
+        this.talk.grab(pack, talk.need).then(() => this.ensureLow(pack)).catch(() => {});
       }
-      return false;
+      if (!pack.frames[pack.rest].bitmap) return false;
     }
     this.ensureLow(pack);
     if (m.talkK != null && m.talkK !== talk.k) m.restoreStill(m.talkK);
     if (m.talkK !== talk.k) {
       // 입을 다문 프레임의 자리를 턱 움직임의 기준으로 삼는다
       const r = pack.frames[pack.rest];
-      m.setFrame(talk.k, r.bitmap, r.P, pack.low);
+      m.setFrame(talk.k, r.bitmap, r.Pc, pack.low);
       m.setTalk(talk.k, m.faces[talk.k].QX.slice());
     }
     let best = -1;
@@ -140,7 +135,7 @@ export class FaceRenderer {
       if (f.bitmap && (best < 0 || Math.abs(f.t - talk.t) < Math.abs(pack.frames[best].t - talk.t))) best = i;
     });
     const f = pack.frames[best];
-    m.setFrame(talk.k, f.bitmap, f.P, pack.low);
+    m.setFrame(talk.k, f.bitmap, f.Pc, pack.low);
     return true;
   }
 

@@ -7,7 +7,7 @@
   1. 환경 변수 APIFRAME_KEY
   2. ~/.opencircuit/apiframe-key  (opencircuit 설치가 만들어 둔 파일)
 
-  python tools/make_faces.py            → web/faces/01.jpg … 와 faces.json  (10장, 약 40크레딧)
+  python tools/make_faces.py            → faces-src/01.jpg …  (10장, 약 40크레딧). 영상의 첫 프레임이 된다
   python tools/make_faces.py --only 3   → 3번 얼굴만 다시 만든다
 
 모델은 FLUX.2 Pro (세로 3:4, 1MP, 장당 4크레딧 안팎). 결과물은 자유롭게 쓸 수 있다.
@@ -26,6 +26,8 @@ import urllib.request
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "web" / "faces"
+# 사진은 말하는 영상을 만들 때 첫 프레임으로만 쓴다. 작품은 영상만 쓰므로 사진은 따로 둔다
+PHOTOS = Path(__file__).resolve().parent.parent / "faces-src"
 BASE = "https://api.apiframe.ai/v2"
 MODEL = "flux-2-pro"
 
@@ -88,7 +90,7 @@ def make(i: int, who: str) -> None:
         if j.get("status") == "COMPLETED":
             url = (j.get("result") or {}).get("images", [None])[0]
             name = f"{i:02d}.jpg"
-            urllib.request.urlretrieve(url, OUT / name)
+            urllib.request.urlretrieve(url, PHOTOS / name)
             print(f"{name}  {who}")
             return
         if j.get("status") == "FAILED":
@@ -100,14 +102,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="얼굴 은행 사진 만들기 (APIFrame)")
     ap.add_argument("--only", type=int, help="이 번호만 다시 만든다")
     args = ap.parse_args()
-    OUT.mkdir(parents=True, exist_ok=True)
+    PHOTOS.mkdir(parents=True, exist_ok=True)
     for i, who in enumerate(PEOPLE, 1):
         if args.only and i != args.only:
             continue
         make(i, who)
-    listing = [{"src": f"{i:02d}.jpg"} for i in range(1, len(PEOPLE) + 1) if (OUT / f"{i:02d}.jpg").exists()]
-    (OUT / "faces.json").write_text(json.dumps(listing, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"faces.json 에 {len(listing)}장을 적었습니다.")
+    print(f"faces-src/ 에 만들었습니다. 이 사진들을 인터넷에서 열리는 곳에 올리고 tools/make_videos.py --base 주소 로 영상을 만듭니다.")
 
 
 if __name__ == "__main__":

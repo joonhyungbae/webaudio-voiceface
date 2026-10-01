@@ -19,3 +19,5 @@ apiframe-key
 # 말하는 영상은 릴리스(faces-v1)에서 받는다
 web/faces/*.mp4
 web/faces/*.raw.mp4
+faces-src/
+web/faces/*.lm.json

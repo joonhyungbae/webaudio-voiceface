@@ -9,7 +9,8 @@
   python tools/make_videos.py --only 6     → 6번만
   python tools/make_videos.py --model kling-3.0
 
-APIFrame 은 사진을 주소로 받는다. 사진이 공개 저장소에 올라가 있으면 그 주소를 쓴다(--base 로 바꿀 수 있다).
+APIFrame 은 사진을 주소로 받는다. 자기 사진으로 만들려면 사진들(01.jpg …)을 인터넷에서 열리는 곳에 올리고
+그 폴더 주소를 --base 로 준다. faces.json 에 적힌 영상 이름(NN.mp4)과 같은 번호의 사진(NN.jpg)을 쓴다.
 키는 make_faces.py 와 같다: 환경 변수 APIFRAME_KEY 나 ~/.opencircuit/apiframe-key 에서 읽기만 한다.
 """
 
@@ -27,7 +28,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_faces import OUT, call  # noqa: E402  같은 키·같은 호출 방식을 쓴다
 
-BASE = "https://raw.githubusercontent.com/joonhyungbae/webaudio-voiceface/main/web/faces"
+# 첫 프레임으로 쓸 사진들이 있는 공개 주소. 예제 사진은 이 저장소의 릴리스에 있다
+BASE = "https://github.com/joonhyungbae/webaudio-voiceface/releases/download/faces-v1"
 
 PROMPT = (
     "The person looks straight into the camera and talks continuously, as if reading a short text aloud. "
@@ -46,6 +48,7 @@ MODELS = {
 
 def make(i: int, model: str, base: str) -> None:
     img = f"{base}/{i:02d}.jpg"
+    OUT.mkdir(parents=True, exist_ok=True)
     job = call("POST", "/videos/generate", {"prompt": PROMPT, "model": model, **MODELS[model](img)})
     jid = job.get("jobId") or job.get("id")
     print(f"{i:02d} 맡겼습니다 ({model})")

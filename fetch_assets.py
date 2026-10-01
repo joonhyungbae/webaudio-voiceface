@@ -4,6 +4,7 @@
 
   python fetch_assets.py     → web/models/face_landmarker.task (약 4MB)
                                web/faces/NN.mp4  faces.json 에 적힌 말하는 영상 (편당 4MB 안팎)
+                               web/faces/NN.lm.json  그 영상의 프레임별 얼굴 랜드마크 (편당 0.6MB 안팎)
                                web/sample/목소리.flac (약 1MB, 마이크 없이 돌려 볼 때)
 
 말하는 영상은 이 저장소의 릴리스(faces-v1)에서 받는다. 자기 영상으로 바꿨다면 web/faces/ 에 이미 있으므로 건너뛴다.
@@ -58,6 +59,8 @@ def main() -> None:
         for f in json.loads(faces.read_text(encoding="utf-8")):
             if f.get("video"):
                 todo.append((f"{VIDEOS}/{f['video']}", f"faces/{f['video']}"))
+                lm = f["video"].replace(".mp4", ".lm.json")
+                todo.append((f"{VIDEOS}/{lm}", f"faces/{lm}"))
     for url, rel in todo:
         dest = WEB / rel
         if dest.exists() and dest.stat().st_size > 0:

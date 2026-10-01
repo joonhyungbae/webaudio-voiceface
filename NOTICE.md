@@ -12,13 +12,12 @@
 
 전시장에서 인터넷이 끊겨도 돌도록 CDN 대신 파일을 넣어 두었습니다.
 
-## 예제 얼굴 사진
+## 예제 얼굴 (말하는 영상)
 
-`web/faces/01.jpg`~`10.jpg` 는 `tools/make_faces.py` 로 APIFrame 의 FLUX.2 Pro(Black Forest Labs)에서 만든
-가상 인물입니다. 실존 인물을 찍거나 본뜬 것이 아닙니다. 이 저장소에서는 CC0 로 내놓습니다.
-
-`web/faces/NN.mp4`(말하는 영상)는 `tools/make_videos.py` 로 같은 사진을 첫 프레임 삼아 APIFrame 의 Hailuo 02(MiniMax)에서
-만든 것입니다. 저장소에는 넣지 않고 릴리스(faces-v1)에 올려 두었으며, 설치할 때 받습니다. 이 저장소에서는 CC0 로 내놓습니다.
+얼굴 은행 `web/faces/NN.mp4` 는 가상 인물의 말하는 영상입니다. 실존 인물을 찍거나 본뜬 것이 아닙니다.
+먼저 `tools/make_faces.py` 로 APIFrame 의 FLUX.2 Pro(Black Forest Labs)에서 인물 사진을 만들고, 그 사진을 첫 프레임 삼아
+`tools/make_videos.py` 로 APIFrame 의 Hailuo 02(MiniMax)에서 영상을 만들었습니다. 영상, 랜드마크(`NN.lm.json`), 사진은
+저장소에 넣지 않고 릴리스(faces-v1)에 올려 두었으며, 설치할 때 영상과 랜드마크를 받습니다. 이 저장소에서는 CC0 로 내놓습니다.
 
 ## 실행할 때 설치하는 것 (environment.yml)
 
