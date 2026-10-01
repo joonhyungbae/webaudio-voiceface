@@ -52,8 +52,10 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 | `web/rule.js` | 숫자 → 얼굴 조합. **작가의 자리** | 한 줄에 한 연결로 짧게 둔다. 기술 코드를 넣지 않는다 |
 | `web/face.js` | 얼굴 은행 읽기, 장면, 흩어짐, 자막 | 프레임마다 도는 곳이라 새 캔버스를 매번 만들지 않는다 |
 | `web/morph.js` | 랜드마크 그물망 섞기와 입·턱·눈꺼풀 (WebGL2) | 그물망은 build() 에서 한 번만 만든다. 프레임마다는 blend → animate → render |
+| `web/talk.js` | 말하는 영상 훑기 → 프레임 순서(비터비) → 쓰는 프레임만 잘라 오기 | 훑기는 기다리는 동안 미리 한다(app.js 의 scanAll). 잘라 온 그림은 입 얼굴 하나 것만 둔다 |
 | `web/lipsync.js` | 녹음 전체 → 입 모양 트랙 | 녹음을 저장하지 않는다. 숫자 배열만 남기고, 지울 때 함께 버린다 |
 | `web/regions.js` | MediaPipe 부위별 점 번호 | mediapipe 의 face_mesh_connections 에서 뽑은 값이다. 손으로 고치지 않는다 |
+| `tools/make_videos.py` | 사진마다 말하는 영상 만들기 (APIFrame Hailuo 02) + 키프레임 촘촘히 다시 인코딩 | 영상은 릴리스 faces-v1 에 올리고 fetch_assets.py 가 받는다 |
 | `tools/make_faces.py` | 예제 얼굴 사진 만들기 (APIFrame, FLUX.2 Pro) | 전시에는 쓰지 않는다. 키는 환경 변수나 `~/.opencircuit/apiframe-key` 에서 읽기만 한다. **키를 저장소의 어떤 파일에도 적지 않는다** |
 | `web/session.js` | 단계와 장면 그리기 | 조작 화면과 전시 화면이 같은 `drawScene` 을 쓴다 |
 | `web/app.js` · `display.js` | 조작 화면 · 전시 화면 | 전시 화면에는 숫자만 보낸다 |
@@ -89,6 +91,10 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 
 ## 함정
 
+- **정적 서버가 구간 요청(Range)을 받아야 영상을 넘길 수 있다.** 파이썬 기본 서버는 못 해서 영상이 늘 0초에 머물렀다.
+  `serve.py` 가 206 으로 답한다. 이것을 지우면 입 모양이 전 프레임에서 같게 잡힌다.
+- **생성 모델의 영상은 키프레임이 처음에 하나뿐이다.** 넘길 때마다 처음부터 다시 풀어 갈수록 느려진다(10초 영상 훑기 95초).
+  `make_videos.py` 가 4프레임마다 키프레임을 넣어 다시 인코딩한다.
 - **MediaPipe 는 사용 기록을 구글로 보낸다**(`odml.pa.googleapis.com/v1/log`, 60초마다와 닫을 때). `face.js` 맨 위에서
   그 주소로 가는 fetch 만 막는다. 이 막음을 지우면 「밖으로 아무것도 보내지 않는다」가 깨진다.
 - **8비트 틀에 더해 섞지 않는다.** 겹친 곳이 1 에서 잘리고 옅은 곳은 하얗게 튄다. 16비트 부동소수(RGBA16F) 틀을 쓴다.

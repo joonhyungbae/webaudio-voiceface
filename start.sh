@@ -19,7 +19,7 @@ CONDA="$(find_conda)" || { echo "conda 가 없습니다. 먼저 설치해 주세
 env_exists "$CONDA" || { echo "conda 환경($ENV_NAME)이 없습니다. 먼저 설치해 주세요:  bash install.sh" >&2; exit 1; }
 py() { "$CONDA" run --no-capture-output -n "$ENV_NAME" python "$@"; }
 
-# 얼굴 모델(과 시험용 녹음)이 없으면 한 번 받아 본다
-[ -f web/models/face_landmarker.task ] && [ -f "web/sample/목소리.flac" ] || py fetch_assets.py || true
+# 얼굴 모델, 말하는 영상, 시험용 녹음 중 없는 것이 있으면 받아 본다 (다 있으면 인터넷을 쓰지 않는다)
+py fetch_assets.py >/dev/null || echo "▸ 받지 못한 파일이 있습니다. 인터넷이 될 때 다시 켜면 받습니다."
 
 py serve.py "$@"

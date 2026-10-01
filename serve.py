@@ -22,6 +22,8 @@ from __future__ import annotations
 import argparse
 import functools
 import http.server
+import os
+import re
 import platform
 import subprocess
 import sys
@@ -41,12 +43,55 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         ".mjs": "text/javascript",
         ".wasm": "application/wasm",
         ".flac": "audio/flac",
+        ".mp4": "video/mp4",
     }
     on_saved = None  # --offline 일 때 파일을 받으면 부른다
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Accept-Ranges", "bytes")
         super().end_headers()
+
+    # 영상의 한 시점으로 넘어가려면(seek) 브라우저가 파일의 일부만 달라고 한다(Range).
+    # 파이썬 기본 서버는 이것을 몰라 영상이 늘 0초에 머문다. 그래서 여기서 받아 준다.
+    def send_head(self):
+        rng = self.headers.get("Range")
+        path = self.translate_path(self.path)
+        if not rng or not os.path.isfile(path):
+            return super().send_head()
+        m = re.match(r"bytes=(\d*)-(\d*)", rng)
+        size = os.path.getsize(path)
+        if not m or (not m.group(1) and not m.group(2)):
+            return super().send_head()
+        if m.group(1):
+            start, end = int(m.group(1)), int(m.group(2)) if m.group(2) else size - 1
+        else:
+            start, end = max(0, size - int(m.group(2))), size - 1
+        end = min(end, size - 1)
+        if start > end:
+            self.send_error(416)
+            return None
+        f = open(path, "rb")
+        f.seek(start)
+        self.send_response(206)
+        self.send_header("Content-Type", self.guess_type(path))
+        self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.end_headers()
+        self._left = end - start + 1
+        return f
+
+    def copyfile(self, source, outputfile) -> None:
+        left = getattr(self, "_left", None)
+        if left is None:
+            return super().copyfile(source, outputfile)
+        self._left = None
+        while left > 0:
+            chunk = source.read(min(65536, left))
+            if not chunk:
+                break
+            outputfile.write(chunk)
+            left -= len(chunk)
 
     def do_POST(self) -> None:
         # --offline 녹화만 받는다. 이 컴퓨터에서 온 것만.

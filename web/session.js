@@ -15,7 +15,7 @@ import { SCRIPT } from "./script.js";
 import { compose } from "./rule.js";
 import { analyze, at } from "./lipsync.js";
 import { text } from "./face.js";
-import { LINE_READ_RATIO, LINE_READ_PAUSE } from "./settings.js";
+import { LINE_READ_RATIO, LINE_READ_PAUSE, TALK_FPS } from "./settings.js";
 
 // 줄에서 소리 나는 글자 수. 한글·영문·숫자만 센다
 const syllables = (line) => (line.match(/[가-힣a-zA-Z0-9]/g) || []).length;
@@ -42,6 +42,7 @@ export class Session {
   }
 
   go(stage) {
+    if (stage === "reading") this.lastWarm = 0;
     this.stage = stage;
     this.t = 0;
     this.onChange?.(stage);
@@ -97,7 +98,23 @@ export class Session {
     // 녹음 전체에서 입 모양을 뽑는다. 다시 듣기 때 얼굴이 이것으로 말한다
     this.track = this.voice.recording && !wasSynth ? analyze(this.voice.recording) : null;
     if (wasSynth) this.voice.mode = "synth";
-    if (this.p.replay && this.voice.replay(SCRIPT.lines, (i) => (this.line = i))) this.go("replay");
+    this.talkPlan = null;
+    if (!this.p.replay) return this.go("disperse");
+    // 입을 맡은 얼굴에 말하는 영상이 있으면, 영상을 훑어 녹음에 맞는 프레임 순서를 정한다 (영상 길이만큼 걸린다)
+    const k = Math.round(this.comp.mouth);
+    if (this.track && this.renderer?.canTalk(k)) {
+      this.go("preparing");
+      try {
+        const { pack, seq } = await this.renderer.prepareTalk(k, this.track, (t) => (this.note = t));
+        if (this.stage !== "preparing") return;  // 그사이 처음으로 돌아갔다
+        this.talkPlan = { k, pack, seq };
+      } catch (e) {
+        this.note = `영상 입을 쓰지 못해 사진으로 말합니다: ${e.message || e}`;
+      }
+      if (this.stage !== "preparing") return;
+    }
+    this.note = "";
+    if (this.voice.replay(SCRIPT.lines, (i) => (this.line = i))) this.go("replay");
     else this.go("disperse");
   }
 
@@ -105,11 +122,13 @@ export class Session {
   reset() {
     this.voice.erase();
     this.track = null;
+    this.talkPlan = null;
     this.sum = { ...EMPTY };
     this.go(this.stage === "idle" || this.stage === "intro" ? "idle" : "erased");
   }
 
   tick(dt, renderer) {
+    this.renderer = renderer;
     this.t += dt;
     const collect = this.stage === "reading";
     const live = this.voice.read(dt, collect);
@@ -140,14 +159,32 @@ export class Session {
     if (this.stage === "disperse" && this.t > this.p.disperseSeconds) {
       this.voice.erase();
       this.track = null;
+      this.talkPlan = null;
       this.go("erased");
     }
     if (this.stage === "erased" && this.t > 2.5) this.go("idle");
 
     this.comp = compose(s, live, this.p, this.bank.count);
+    // 읽는 동안 입을 맡을 얼굴이 어느 정도 보이면 그 얼굴의 영상부터 미리 훑는다 (낭독이 끝난 뒤 기다림이 짧아진다)
+    if (this.stage === "reading" && renderer && this.t - (this.lastWarm || 0) > 3) {
+      this.lastWarm = this.t;
+      const k = Math.round(this.comp.mouth);
+      if (renderer.canTalk(k)) renderer.talk.scan(k, renderer.bank.videos[k]).catch(() => {});
+    }
+    if (this.stage === "preparing") {
+      this.comp.formed = 1;
+      this.comp.open = 0;
+    }
     if (this.stage === "replay") {
       this.comp.formed = 1;
-      if (this.track) Object.assign(this.comp, scaleMouth(at(this.track, this.voice.now - this.voice.t0), this.p.mouthGain));
+      const at_ = this.voice.now - this.voice.t0;
+      if (this.talkPlan) {
+        // 영상 입: 정해 둔 순서에서 지금 프레임을 고르고, 입 얼굴은 그 한 얼굴로 고정한다
+        const { k, pack, seq } = this.talkPlan;
+        const i = seq[Math.min(seq.length - 1, Math.max(0, Math.floor(at_ * TALK_FPS)))];
+        this.comp.mouth = k;
+        this.comp.talk = { k, t: pack.frames[i].t };
+      } else if (this.track) Object.assign(this.comp, scaleMouth(at(this.track, at_), this.p.mouthGain));
     }
     return { s, live };
   }
@@ -176,6 +213,7 @@ export function drawScene(g, cw, ch, msg, renderer, now) {
       break;
     case "reading":
     case "finishing":
+    case "preparing":
     case "replay":
       renderer.compose(msg.comp, now);
       renderer.drawFace(g, cw, ch);

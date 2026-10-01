@@ -65,7 +65,7 @@ function buildMeters() {
   $("comp").innerHTML = COMP.map((k) => `<span>${k} <b id="c-${k}">0</b></span>`).join("");
 }
 
-const STAGE_NAME = { idle: "기다림", intro: "안내", reading: "낭독", finishing: "낭독", replay: "다시 듣기", disperse: "흩어짐", erased: "지움" };
+const STAGE_NAME = { idle: "기다림", intro: "안내", reading: "낭독", finishing: "낭독", preparing: "말할 준비", replay: "다시 듣기", disperse: "흩어짐", erased: "지움" };
 
 async function listMics() {
   try {
@@ -155,6 +155,7 @@ function loop(nowMs) {
     for (const k of COMP) $(`c-${k}`).textContent = session.comp[k].toFixed(2);
     $("seconds").textContent = `말한 시간 ${s.seconds.toFixed(1)}초`;
     if (session.error) { $("status").textContent = `열지 못했습니다: ${session.error}`; session.error = null; }
+    if (session.note) $("status").textContent = session.note;
   }
 
   // 되풀이: 기다림 → 안내 → 낭독
@@ -181,6 +182,8 @@ function loop(nowMs) {
   $("status").textContent = `얼굴: ${bank.source}${sim ? " · 시험용 녹음으로 읽습니다" : ""}`;
   listMics();
   if (offline) recordOffline(offline);
+  // 관객을 기다리는 동안 말하는 영상들을 미리 훑어 둔다
+  renderer.scanAll();
   requestAnimationFrame(loop);
   try { navigator.wakeLock?.request("screen"); } catch {}
   window.voiceface = { p, voice, session };

@@ -17,12 +17,16 @@
 `web/faces/01.jpg`~`10.jpg` 는 `tools/make_faces.py` 로 APIFrame 의 FLUX.2 Pro(Black Forest Labs)에서 만든
 가상 인물입니다. 실존 인물을 찍거나 본뜬 것이 아닙니다. 이 저장소에서는 CC0 로 내놓습니다.
 
+`web/faces/NN.mp4`(말하는 영상)는 `tools/make_videos.py` 로 같은 사진을 첫 프레임 삼아 APIFrame 의 Hailuo 02(MiniMax)에서
+만든 것입니다. 저장소에는 넣지 않고 릴리스(faces-v1)에 올려 두었으며, 설치할 때 받습니다. 이 저장소에서는 CC0 로 내놓습니다.
+
 ## 실행할 때 설치하는 것 (environment.yml)
 
 | 대상 | 쓰는 곳 | 라이선스 |
 |---|---|---|
 | Python (conda-forge) | 웹 서버, 내려받기 | PSF License |
 | Miniforge (conda 가 없을 때만 `~/miniforge3` 에 깐다) | conda 환경 | BSD-3-Clause |
+| FFmpeg (conda-forge) | `tools/make_videos.py` 가 영상을 다시 인코딩할 때만 | LGPL-2.1 이상 (conda-forge 빌드는 GPL 구성요소 포함) |
 
 ## 따로 받아 쓰는 것
 

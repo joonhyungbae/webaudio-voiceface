@@ -53,7 +53,7 @@ if (Test-CondaEnv $Conda) {
 }
 
 # ── 4. 얼굴 랜드마크 모델과 시험용 녹음 ──
-Say "얼굴 랜드마크 모델과 시험용 녹음을 받습니다 (약 5MB)"
+Say "얼굴 랜드마크 모델, 말하는 영상, 시험용 녹음을 받습니다 (약 45MB)"
 & $Conda run --no-capture-output -n $EnvName python fetch_assets.py
 if ($LASTEXITCODE -ne 0) { Say "받지 못했습니다. 인터넷을 확인하세요. 나중에 .\start.ps1 이 다시 받아 봅니다." }
 

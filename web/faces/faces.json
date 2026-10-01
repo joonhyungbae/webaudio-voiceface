@@ -1,32 +1,42 @@
 [
   {
-    "src": "01.jpg"
+    "src": "01.jpg",
+    "video": "01.mp4"
   },
   {
-    "src": "02.jpg"
+    "src": "02.jpg",
+    "video": "02.mp4"
   },
   {
-    "src": "03.jpg"
+    "src": "03.jpg",
+    "video": "03.mp4"
   },
   {
-    "src": "04.jpg"
+    "src": "04.jpg",
+    "video": "04.mp4"
   },
   {
-    "src": "05.jpg"
+    "src": "05.jpg",
+    "video": "05.mp4"
   },
   {
-    "src": "06.jpg"
+    "src": "06.jpg",
+    "video": "06.mp4"
   },
   {
-    "src": "07.jpg"
+    "src": "07.jpg",
+    "video": "07.mp4"
   },
   {
-    "src": "08.jpg"
+    "src": "08.jpg",
+    "video": "08.mp4"
   },
   {
-    "src": "09.jpg"
+    "src": "09.jpg",
+    "video": "09.mp4"
   },
   {
-    "src": "10.jpg"
+    "src": "10.jpg",
+    "video": "10.mp4"
   }
 ]

@@ -5,3 +5,4 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
+  - ffmpeg        # tools/make_videos.py 가 말하는 영상을 넘기기 쉬운 꼴로 다시 인코딩할 때만 쓴다

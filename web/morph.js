@@ -203,12 +203,6 @@ export class Morph {
     const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
     const P = new Float32Array(2 * N);
     for (let i = 0; i < N; i++) { P[2 * i] = landmarks[i].x * w; P[2 * i + 1] = landmarks[i].y * h; }
-    // 두 눈 가운데를 기준 틀의 같은 자리로
-    const eyeR = mean(P, R.RIGHT_EYE_UPPER.concat(R.RIGHT_EYE_LOWER));
-    const eyeL = mean(P, R.LEFT_EYE_UPPER.concat(R.LEFT_EYE_LOWER));
-    const T = similarity(eyeR, eyeL, [OUT_W * (0.5 - EYE_GAP / 2), OUT_H * EYE_LINE], [OUT_W * (0.5 + EYE_GAP / 2), OUT_H * EYE_LINE]);
-    const Q = new Float32Array(2 * N);
-    for (let i = 0; i < N; i++) [Q[2 * i], Q[2 * i + 1]] = T.fwd(P[2 * i], P[2 * i + 1]);
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
@@ -217,20 +211,69 @@ export class Morph {
     // 사진 바깥을 읽으면 끝 줄이 늘어나 세로줄이 생긴다. 거울처럼 접어 읽는다
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
-    this.faces.push({ img, w, h, P, Q, T, tex, low: lowImage(img, P) });
+    const f = { img, w, h, P, tex, low: lowImage(img, P) };
+    this.geom(f);
+    this.faces.push(f);
   }
+
+  /* 두 눈 가운데를 기준 틀의 같은 자리로 옮기는 변환과, 옮긴 랜드마크(Q) */
+  geom(f) {
+    const eyeR = mean(f.P, R.RIGHT_EYE_UPPER.concat(R.RIGHT_EYE_LOWER));
+    const eyeL = mean(f.P, R.LEFT_EYE_UPPER.concat(R.LEFT_EYE_LOWER));
+    f.T = similarity(eyeR, eyeL, [OUT_W * (0.5 - EYE_GAP / 2), OUT_H * EYE_LINE], [OUT_W * (0.5 + EYE_GAP / 2), OUT_H * EYE_LINE]);
+    f.Q = f.Q || new Float32Array(2 * N);
+    for (let i = 0; i < N; i++) [f.Q[2 * i], f.Q[2 * i + 1]] = f.T.fwd(f.P[2 * i], f.P[2 * i + 1]);
+  }
+
+  /* 그물망의 모든 점에 대해: 기준 틀 자리(QX), 사진 속 자리(UV), 넓은 색(LOW) */
+  mesh(f) {
+    const c = mean(f.Q, R.FACE_OVAL);
+    // 윤곽을 두 겹 넓힌 점 (머리카락과 목을 실어 나른다). 화면 밖으로 나가면 테두리 점과 겹쳐 가는 선이 생겨 안쪽으로 묶는다
+    const keep = (x, y) => [Math.min(OUT_W - 2, Math.max(2, x)), Math.min(OUT_H - 2, Math.max(2, y))];
+    const ring = [];
+    for (const s of [1.22, 1.5]) for (const i of R.FACE_OVAL) ring.push(keep(c[0] + (f.Q[2 * i] - c[0]) * s, c[1] + (f.Q[2 * i + 1] - c[1]) * s));
+    f.QX = f.QX || new Float32Array(2 * this.V);
+    f.UV = f.UV || new Float32Array(2 * this.V);
+    f.LOW = f.LOW || new Float32Array(3 * this.V);
+    for (let v = 0; v < this.V; v++) {
+      const [x, y] = v < N ? [f.Q[2 * v], f.Q[2 * v + 1]] : v < N + ring.length ? ring[v - N] : this.border[v - N - ring.length];
+      f.QX[2 * v] = x; f.QX[2 * v + 1] = y;
+      const [ix, iy] = v < N ? [f.P[2 * v], f.P[2 * v + 1]] : f.T.inv(x, y);
+      f.UV[2 * v] = ix / f.w; f.UV[2 * v + 1] = iy / f.h;
+      f.LOW.set(sampleLow(f.low, f.UV[2 * v], f.UV[2 * v + 1]), 3 * v);
+    }
+  }
+
+  /* k 번 얼굴의 사진과 랜드마크를 영상 프레임 하나로 바꿔 끼운다. low 는 그 영상의 넓은 색 */
+  setFrame(k, src, P, low) {
+    const gl = this.gl, f = this.faces[k];
+    if (!f.still) f.still = { img: f.img, w: f.w, h: f.h, P: f.P, low: f.low };
+    gl.bindTexture(gl.TEXTURE_2D, f.tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    Object.assign(f, { img: src, w: src.width, h: src.height, P, low });
+    this.geom(f);
+    this.mesh(f);
+    gl.bindBuffer(gl.ARRAY_BUFFER, f.uvBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, f.UV, gl.DYNAMIC_DRAW);
+  }
+
+  /* 영상 프레임을 걷고 사진으로 되돌린다. */
+  restoreStill(k) {
+    const f = this.faces[k];
+    if (!f?.still) return;
+    const s = f.still;
+    f.still = null;
+    this.setFrame(k, s.img, s.P, s.low);
+    f.still = null;
+    this.talkK = null;
+  }
+
+  /* 영상의 턱 움직임을 따라가게 한다. rest 는 그 얼굴이 입을 다문 프레임일 때의 QX */
+  setTalk(k, rest) { this.talkK = k; this.talkRest = rest; }
 
   /* 얼굴을 다 들인 뒤 한 번. 바깥 점을 더하고, 그물망과 부위 소속을 만든다. */
   build() {
     const K = this.faces.length;
-    // 윤곽을 두 겹 넓힌 점 (머리카락과 목을 실어 나른다)
-    for (const f of this.faces) {
-      const c = mean(f.Q, R.FACE_OVAL);
-      f.ring = [];
-      // 화면 밖으로 나가면 테두리 점과 겹쳐 가는 선이 생긴다. 안쪽으로 묶는다
-      const keep = (x, y) => [Math.min(OUT_W - 2, Math.max(2, x)), Math.min(OUT_H - 2, Math.max(2, y))];
-      for (const s of [1.22, 1.5]) for (const i of R.FACE_OVAL) f.ring.push(keep(c[0] + (f.Q[2 * i] - c[0]) * s, c[1] + (f.Q[2 * i + 1] - c[1]) * s));
-    }
     // 화면 테두리 점
     this.border = [];
     const B = 8;
@@ -238,23 +281,8 @@ export class Morph {
       const t = i / B;
       this.border.push([t * OUT_W, 0], [OUT_W, t * OUT_H], [(1 - t) * OUT_W, OUT_H], [0, (1 - t) * OUT_H]);
     }
-    this.V = N + this.faces[0].ring.length + this.border.length;
-    // 얼굴마다 모든 점의 기준 틀 자리(Qx)와 사진 속 자리(uv)
-    for (const f of this.faces) {
-      f.QX = new Float32Array(2 * this.V);
-      f.UV = new Float32Array(2 * this.V);
-      const all = [];
-      for (let i = 0; i < N; i++) all.push([f.Q[2 * i], f.Q[2 * i + 1]]);
-      all.push(...f.ring, ...this.border);
-      all.forEach(([x, y], v) => {
-        f.QX[2 * v] = x; f.QX[2 * v + 1] = y;
-        const [ix, iy] = v < N ? [f.P[2 * v], f.P[2 * v + 1]] : f.T.inv(x, y);
-        f.UV[2 * v] = ix / f.w; f.UV[2 * v + 1] = iy / f.h;
-      });
-      // 점마다 이 얼굴의 넓은 색
-      f.LOW = new Float32Array(3 * this.V);
-      for (let v = 0; v < this.V; v++) f.LOW.set(sampleLow(f.low, f.UV[2 * v], f.UV[2 * v + 1]), 3 * v);
-    }
+    this.V = N + 2 * R.FACE_OVAL.length + this.border.length;
+    for (const f of this.faces) this.mesh(f);
     // 평균 모양으로 그물망
     const M = new Float32Array(2 * this.V);
     for (const f of this.faces) for (let i = 0; i < M.length; i++) M[i] += f.QX[i] / K;
@@ -317,6 +345,19 @@ export class Morph {
       base[v] = Math.max(0, 1 - Math.min(1, s));
     }
     this.member.contour = base;
+    // 아래 얼굴: 영상의 턱 움직임을 다른 얼굴의 턱에도 옮길 자리 (코 아래에서 턱까지, 귀 쪽과 목은 덜)
+    const noseY = M[2 * 1 + 1], lipY = M[2 * 13 + 1], jawY = M[2 * 152 + 1];
+    const oc = mean(M, R.FACE_OVAL), halfW = (Math.max(...R.FACE_OVAL.map((i) => M[2 * i])) - Math.min(...R.FACE_OVAL.map((i) => M[2 * i]))) / 2;
+    this.lowMask = new Float32Array(this.V);
+    // 입 자리: 콧방울 아래부터. 영상 얼굴은 여기에만 쓴다
+    const noseBottom = Math.max(...[2, 98, 327, 94].map((i) => M[2 * i + 1]));
+    const lipTop = Math.min(...R.LIPS_UPPER_OUTER.map((i) => M[2 * i + 1]));
+    this.mouthOnly = new Float32Array(this.V);
+    for (let v = 0; v < this.V; v++) this.mouthOnly[v] = smooth(noseBottom, lipTop, M[2 * v + 1]);
+    for (let v = 0; v < N + 2 * R.FACE_OVAL.length; v++) {
+      const x = M[2 * v], y = M[2 * v + 1];
+      this.lowMask[v] = smooth(noseY, lipY, y) * (1 - smooth(jawY + 0.02 * OUT_H, jawY + 0.12 * OUT_H, y)) * (1 - smooth(halfW * 0.75, halfW * 1.15, Math.abs(x - oc[0])));
+    }
     // 그리기 준비
     const gl = this.gl;
     this.ibo = gl.createBuffer();
@@ -333,7 +374,7 @@ export class Morph {
     for (const f of this.faces) {
       f.uvBuf = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, f.uvBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, f.UV, gl.STATIC_DRAW);
+      gl.bufferData(gl.ARRAY_BUFFER, f.UV, gl.DYNAMIC_DRAW);
     }
     this.S = new Float32Array(2 * this.V);
     this.W = this.faces.map(() => new Float32Array(this.V));
@@ -371,6 +412,30 @@ export class Morph {
         if (!w[v]) continue;
         this.S[2 * v] += Q[2 * v] * w[v];
         this.S[2 * v + 1] += Q[2 * v + 1] * w[v];
+      }
+    }
+    // 영상이 끼워진 얼굴은 입과 턱에만 쓴다. 코까지 섞이면 영상 속 미세한 고개 돌림 때문에 콧방울이 겹쳐 보인다.
+    // 빠진 몫은 코를 준 얼굴에게 돌린다
+    if (this.talkK != null && this.mouthOnly) {
+      const k = this.talkK, [na, nb, nt] = pairs.nose;
+      for (let v = 0; v < this.V; v++) {
+        const cut = this.W[k][v] * (1 - this.mouthOnly[v]);
+        if (cut <= 0) continue;
+        this.W[k][v] -= cut;
+        this.W[na][v] += cut * (1 - nt);
+        this.W[nb][v] += cut * nt;
+        this.S[2 * v] += (this.faces[na].QX[2 * v] * (1 - nt) + this.faces[nb].QX[2 * v] * nt - this.faces[k].QX[2 * v]) * cut;
+        this.S[2 * v + 1] += (this.faces[na].QX[2 * v + 1] * (1 - nt) + this.faces[nb].QX[2 * v + 1] * nt - this.faces[k].QX[2 * v + 1]) * cut;
+      }
+    }
+    // 영상이 끼워진 얼굴의 턱 움직임을 아래 얼굴 전체에 옮긴다 (입만 열리고 턱이 그대로면 살이 늘어난다)
+    if (this.talkK != null && this.talkRest) {
+      const k = this.talkK, Q = this.faces[k].QX, rest = this.talkRest, w = this.W[k];
+      for (let v = 0; v < this.V; v++) {
+        const m = this.lowMask[v] * (1 - w[v]);
+        if (m <= 0) continue;
+        this.S[2 * v] += (Q[2 * v] - rest[2 * v]) * m;
+        this.S[2 * v + 1] += (Q[2 * v + 1] - rest[2 * v + 1]) * m;
       }
     }
     // 넓은 색의 기준: 윤곽을 준 얼굴(들)의 넓은 색
@@ -519,7 +584,7 @@ export class Morph {
 
 /* 「넓은 색」: 피부만 흐리게 평균낸 색. 머리카락·눈·눈썹·입술은 빼고 잰다(정규화 합성곱).
    그래야 눈 옆 머리카락의 어두움이 피부색으로 잘못 옮겨 가지 않는다. */
-function lowImage(img, P) {
+export function lowImage(img, P) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   const w = COLOR_BLUR, h = Math.round((w * ih) / iw);
   const c = Object.assign(document.createElement("canvas"), { width: w, height: h });

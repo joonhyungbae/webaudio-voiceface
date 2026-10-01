@@ -58,6 +58,12 @@ export const BLINK_EVERY = 4.5;       // 눈을 깜빡이는 대략의 간격(�
 export const TILE_COLS = 14;          // 흩어질 때 조각 수
 export const TILE_ROWS = 20;
 
+// ─── 말하는 영상 (talk.js) ───────────────────────────────────────────────
+export const TALK_FPS = 24;           // 다시 듣기 때 영상 프레임을 바꾸는 횟수(초당). 영상의 프레임 수와 맞춘다
+export const TALK_CROP_W = 360;       // 영상에서 아래 얼굴을 잘라 둘 너비(픽셀). 크면 또렷하고 메모리를 더 쓴다
+export const TALK_JUMP = 0.6;         // 영상의 다른 자리로 건너뛰는 값. 크면 덜 튀고, 작으면 입 모양을 더 정확히 따른다
+export const TALK_HOLD = 0.15;        // 같은 프레임에 머무는 값
+
 // ─── 입 모양 (lipsync.js) ────────────────────────────────────────────────
 export const LIPSYNC_FPS = 100;       // 입 모양을 뽑는 횟수(초당)
 export const LIPSYNC_LEAD = 0.04;     // 입이 소리보다 먼저 움직이는 시간(초)
