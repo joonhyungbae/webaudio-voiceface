@@ -15,6 +15,18 @@ import { Morph } from "./morph.js";
 import { OUT_W as W, OUT_H as H, TILE_COLS, TILE_ROWS, BLINK_EVERY } from "./settings.js";
 
 const LIB = new URL("vendor/mediapipe", document.baseURI).href;
+
+// MediaPipe 는 사용 기록을 구글 서버(odml.pa.googleapis.com)로 보낸다. 이 작품은 아무것도 밖으로 보내지 않으므로
+// 그 주소로 가는 요청만 여기서 막는다. 라이브러리 파일은 고치지 않는다.
+if (!window.__voicefaceNoLog) {
+  window.__voicefaceNoLog = true;
+  const realFetch = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    if (url.includes("odml.pa.googleapis.com")) return Promise.resolve(new Response(null, { status: 204 }));
+    return realFetch(input, init);
+  };
+}
 const MODEL = new URL("models/face_landmarker.task", document.baseURI).href;
 
 async function landmarker() {
