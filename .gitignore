@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+out.mp4
+out.webm
+
+# 큰 자료는 커밋하지 않는다. 설치 스크립트(fetch_sample.py)가 받아 온다.
+web/sample/*
+!web/sample/README.md

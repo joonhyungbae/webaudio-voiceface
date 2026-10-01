@@ -1,0 +1,48 @@
+:root { color-scheme: light; --bg:#f4f2ec; --fg:#1b1b1a; --dim:#6d6a63; --line:#d9d5cb; --mark:#1b1b1a;
+        --card:#fff; --track:#eeeae2; --warn:#b3261e; --on:#2f7d4f; }
+/* 어두운 화면. 미리보기 속 색은 조절판의 「선」·「바탕」이 정하므로 여기서 바꾸지 않는다 */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; --bg:#141413; --fg:#ecebe6; --dim:#a19d94; --line:#34322e; --mark:#ecebe6;
+          --card:#1e1d1b; --track:#2d2b28; --warn:#e5534b; --on:#5cbf86; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin:0; background:var(--bg); color:var(--fg);
+       font-family: system-ui, -apple-system, "Pretendard", "Apple SD Gothic Neo", sans-serif; font-size:14px; }
+.app { display:grid; grid-template-columns: minmax(0,1fr) 360px; gap:16px; padding:16px; min-height:100%; }
+.left { display:flex; flex-direction:column; min-width:0; position:sticky; top:16px; height:calc(100vh - 32px); }
+#stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
+#preview { display:block; border-radius:10px; box-shadow: 0 0 0 1px var(--line); }
+.hint { color:var(--dim); font-size:12.5px; text-align:center; margin:10px 0 0; }
+aside { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+h2 { font-size:13px; color:var(--dim); margin:0 0 10px; font-weight:600; }
+h2 b { color:var(--fg); margin-left:6px; }
+.buttons { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+button { font:inherit; padding:8px 12px; border-radius:999px; border:1px solid var(--mark); background:var(--card); color:var(--mark); cursor:pointer; }
+button.main { background:var(--mark); color:var(--card); }
+button.warn { border-color:var(--warn); color:var(--warn); grid-column: 1 / -1; }
+select { width:100%; font:inherit; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+.note { color:var(--dim); font-size:12.5px; margin-top:8px; line-height:1.5; }
+.level { position:relative; height:10px; background:var(--track); border-radius:999px; overflow:hidden; margin-top:10px; }
+.level i { position:absolute; inset:0 auto 0 0; width:0; background:var(--dim); }
+.level i.on { background:var(--on); }
+.level em { position:absolute; top:0; bottom:0; width:2px; background:var(--fg); }
+.meter { display:grid; grid-template-columns: 84px 1fr 36px; align-items:center; gap:8px; margin:5px 0; font-size:12.5px; }
+.meter span { color:var(--dim); }
+.meter i { height:6px; background:var(--track); border-radius:999px; overflow:hidden; }
+.meter b { display:block; height:100%; width:0; background:var(--mark); }
+.meter output { text-align:right; font-variant-numeric:tabular-nums; color:var(--dim); }
+#comp { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; color:var(--dim); margin-top:8px; }
+#comp b { color:var(--fg); font-weight:500; font-variant-numeric:tabular-nums; }
+.param { display:grid; grid-template-columns: 130px 1fr 40px; align-items:center; gap:8px; margin:7px 0; }
+.param span { color:var(--dim); font-size:12.5px; }
+.param input[type=range] { width:100%; accent-color:var(--mark); }
+.param input[type=color] { width:44px; height:26px; border:0; background:none; padding:0; }
+.param output { text-align:right; font-variant-numeric:tabular-nums; font-size:12px; color:var(--dim); }
+body.bare aside, body.bare .hint { display:none; }
+body.bare .app { grid-template-columns: 1fr; }
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .left { position:static; height:70vh; }
+}

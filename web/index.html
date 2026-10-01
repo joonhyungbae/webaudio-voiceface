@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>목소리 얼굴 · 조작</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <div class="left">
+    <div id="stage"><canvas id="preview"></canvas></div>
+    <p class="hint">전시 화면 미리보기. 외부 모니터에는 「전시 화면 열기」로 띄운 창을 보냅니다.</p>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h2>단계 <b id="stage-name">기다림</b></h2>
+      <div class="buttons">
+        <button id="b-intro">안내 띄우기</button>
+        <button id="b-read" class="main">직접 읽기 시작</button>
+        <button id="b-synth">합성 음성으로</button>
+        <button id="b-watch">보기만 하기</button>
+        <button id="b-next">다음 줄</button>
+        <button id="b-reset" class="warn">처음으로 (녹음 지움)</button>
+      </div>
+      <div id="status" class="note"></div>
+    </div>
+
+    <div class="card">
+      <h2>목소리</h2>
+      <select id="mic"><option value="">기본 마이크</option></select>
+      <div class="level"><i id="level"></i><em id="level-mark"></em></div>
+      <div class="note"><span id="pitch-now"></span> <span id="seconds"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>낭독에서 모은 숫자 → 규칙(web/rule.js) → 얼굴</h2>
+      <div id="summary"></div>
+      <div id="comp"></div>
+    </div>
+
+    <div class="card">
+      <h2>조절</h2>
+      <div id="params"></div>
+      <button id="b-reset-params">처음 값으로</button>
+    </div>
+
+    <div class="card">
+      <button id="b-display">전시 화면 열기</button>
+      <p class="note">Space 시작·다음 줄 · Esc 처음으로(녹음 지움) · H 조절판 숨기기</p>
+    </div>
+  </aside>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

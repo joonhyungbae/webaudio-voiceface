@@ -1,0 +1,7 @@
+# conda 환경. ./install.sh 가 이 파일로 만들고, ./start.sh 가 이 환경으로 켠다.
+# 소리 분석과 화면은 브라우저가 하므로 파이썬 패키지는 필요 없다. 파이썬은 웹 서버와 내려받기에만 쓴다.
+name: voiceface
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
